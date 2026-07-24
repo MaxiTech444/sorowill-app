@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useParams } from 'next/navigation';
 
 import {
@@ -52,6 +52,9 @@ export default function WillDetailPage() {
   const [topUpAmount, setTopUpAmount] = useState('');
   const [showEditBeneficiaries, setShowEditBeneficiaries] = useState(false);
   const [draftBeneficiaries, setDraftBeneficiaries] = useState<Beneficiary[]>([]);
+  const [reminderEmail, setReminderEmail] = useState('');
+  const [reminderStatus, setReminderStatus] = useState<string | null>(null);
+  const [reminderPending, setReminderPending] = useState(false);
 
   const refetch = useCallback(async () => {
     try {
@@ -89,6 +92,40 @@ export default function WillDetailPage() {
       setError(err instanceof Error ? err.message : `${name} failed`);
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function handleReminderSubscribe(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!will) {
+      setReminderStatus('The will details are still loading.');
+      return;
+    }
+
+    setReminderPending(true);
+    setReminderStatus(null);
+
+    try {
+      const response = await fetch('/api/reminders/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          willId: will.id,
+          email: reminderEmail,
+          owner: will.owner,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || 'Unable to register reminder');
+      }
+      setReminderStatus(`Reminder enabled for ${payload.subscription.email}.`);
+      setReminderEmail('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to register reminder';
+      setReminderStatus(message);
+    } finally {
+      setReminderPending(false);
     }
   }
 
@@ -228,6 +265,33 @@ export default function WillDetailPage() {
           </>
         ) : null}
       </div>
+
+      {isOwner && will.status === WillStatus.Active ? (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <h2 className="text-sm font-semibold text-will-light">Check-in reminders</h2>
+          <p className="mt-1 text-sm text-will-light/60">
+            Receive an email 2+ weeks before the deadline and again when it&apos;s imminent.
+          </p>
+          <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={handleReminderSubscribe}>
+            <input
+              type="email"
+              value={reminderEmail}
+              onChange={(event) => setReminderEmail(event.target.value)}
+              placeholder="you@example.com"
+              className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
+              required
+            />
+            <button
+              type="submit"
+              disabled={reminderPending}
+              className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:opacity-60"
+            >
+              {reminderPending ? 'Saving…' : 'Enable reminders'}
+            </button>
+          </form>
+          {reminderStatus ? <p className="mt-2 text-sm text-will-light/70">{reminderStatus}</p> : null}
+        </div>
+      ) : null}
 
       {showTopUp ? (
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
