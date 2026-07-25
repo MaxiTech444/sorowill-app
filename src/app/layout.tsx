@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { WalletConnect } from '@/components/WalletConnect';
+import { NetworkSwitcher } from '@/components/NetworkSwitcher';
 
 import './globals.css';
 
@@ -38,7 +39,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 Create a Will
               </Link>
             </nav>
-            <WalletConnect />
+            <div className="flex items-center gap-4">
+              <NetworkSwitcher />
+              <WalletConnect />
+            </div>
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
@@ -46,3 +50,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
