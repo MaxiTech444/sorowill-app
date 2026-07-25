@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
-import { type Will } from '@sorowill/sdk';
+import { type Will, formatUSDC, toStroops } from '@sorowill/sdk';
 
 import { safeGetPublicKey } from '@/lib/freighter';
-import { getSoroWillClient } from '@/lib/sorowill';
+import { getSoroWillClient, getWillsByGuardian } from '@/lib/sorowill';
 import { WillCard } from '@/components/WillCard';
 
-type Tab = 'owned' | 'inheriting';
+type Tab = 'owned' | 'inheriting' | 'guardianship';
 
 function CardSkeleton() {
   return (
@@ -29,33 +29,45 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>('owned');
   const [ownedWills, setOwnedWills] = useState<Will[]>([]);
   const [inheritingWills, setInheritingWills] = useState<Will[]>([]);
+  const [guardianWills, setGuardianWills] = useState<Will[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
 
-  useEffect(() => {
-    safeGetPublicKey().then((key) => {
-      setPublicKey(key);
-      setCheckedWallet(true);
-    });
-  }, []);
+  // Batch top-up state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedWillIds, setSelectedWillIds] = useState<string[]>([]);
+  const [batchAmounts, setBatchAmounts] = useState<Record<string, string>>({});
+  const [batchSubmitting, setBatchSubmitting] = useState(false);
+  const [batchResults, setBatchResults] = useState<
+    Record<string, { status: 'success' | 'error'; message: string; txHash?: string }>
+  >({});
 
   const loadWills = useCallback(async (owner: string) => {
     setLoading(true);
     setError(null);
     try {
       const client = getSoroWillClient();
-      const [owned, inheriting] = await Promise.all([
+      const [owned, inheriting, guardian] = await Promise.all([
         client.getWillsByOwner(owner),
         client.getWillsByBeneficiary(owner),
+        getWillsByGuardian(owner),
       ]);
       setOwnedWills(owned);
       setInheritingWills(inheriting);
+      setGuardianWills(guardian);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load wills');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    safeGetPublicKey().then((key) => {
+      setPublicKey(key);
+      setCheckedWallet(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -78,35 +90,135 @@ export default function DashboardPage() {
     }
   }
 
+  // Handle individual selection toggle
+  function handleToggleSelectWill(willId: string) {
+    setSelectedWillIds((prev) => {
+      if (prev.includes(willId)) {
+        const next = prev.filter((id) => id !== willId);
+        const nextAmounts = { ...batchAmounts };
+        delete nextAmounts[willId];
+        setBatchAmounts(nextAmounts);
+        return next;
+      } else {
+        return [...prev, willId];
+      }
+    });
+  }
+
+  // Handle amount change for specific will
+  function handleAmountChange(willId: string, amount: string) {
+    setBatchAmounts((prev) => ({
+      ...prev,
+      [willId]: amount,
+    }));
+  }
+
+  // Execute batch top-up sequentially to avoid sequence number issues
+  async function handleSubmitBatchTopUp(e: React.FormEvent) {
+    e.preventDefault();
+    if (selectedWillIds.length === 0) return;
+
+    setBatchSubmitting(true);
+    setBatchResults({});
+    const client = getSoroWillClient();
+    const results: typeof batchResults = {};
+
+    for (const willId of selectedWillIds) {
+      const amount = batchAmounts[willId];
+      if (!amount || Number(amount) <= 0) {
+        results[willId] = { status: 'error', message: 'Invalid or missing amount' };
+        continue;
+      }
+
+      try {
+        const res = await client.topUp(willId, toStroops(amount).toString());
+        results[willId] = { status: 'success', message: 'Top-up successful', txHash: res.txHash };
+      } catch (err) {
+        results[willId] = {
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Transaction failed',
+        };
+      }
+    }
+
+    setBatchResults(results);
+    setBatchSubmitting(false);
+
+    // Refresh data
+    if (publicKey) {
+      await loadWills(publicKey);
+    }
+  }
+
   if (checkedWallet && !publicKey) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
         <h1 className="text-xl font-semibold text-will-light">Connect your wallet</h1>
         <p className="mt-2 text-sm text-will-light/60">
-          Connect Freighter to see the wills you own and the ones you&apos;re a beneficiary of.
+          Connect Freighter to see the wills you own and the ones you&apos;re a beneficiary or guardian of.
         </p>
       </div>
     );
   }
 
-  const activeList = tab === 'owned' ? ownedWills : inheritingWills;
+  const activeList =
+    tab === 'owned' ? ownedWills : tab === 'inheriting' ? inheritingWills : guardianWills;
 
   return (
     <div className="space-y-6">
+      {/* Top Guardian Alert */}
+      {guardianWills.length > 0 && (
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-300 text-sm flex justify-between items-center">
+          <span>
+            ℹ️ You are a designated guardian on{' '}
+            <strong className="underline">{guardianWills.length} active will(s)</strong>.
+          </span>
+          <button
+            onClick={() => setTab('guardianship')}
+            className="text-xs font-semibold bg-emerald-500 text-white rounded-full px-3 py-1 hover:bg-emerald-500/80 transition"
+          >
+            View Role
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-will-light">Dashboard</h1>
-        <Link
-          href="/will/new"
-          className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90"
-        >
-          + New Will
-        </Link>
+        <div className="flex items-center gap-3">
+          {tab === 'owned' && ownedWills.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsMultiSelectMode((m) => !m);
+                setSelectedWillIds([]);
+                setBatchAmounts({});
+                setBatchResults({});
+              }}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                isMultiSelectMode
+                  ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300'
+                  : 'border border-white/20 text-will-light/80 hover:border-white/40'
+              }`}
+            >
+              {isMultiSelectMode ? 'Cancel Multi-select' : 'Multi-select Mode'}
+            </button>
+          )}
+          <Link
+            href="/will/new"
+            className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90"
+          >
+            + New Will
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-1 rounded-full border border-white/10 bg-white/5 p-1">
         <button
           type="button"
-          onClick={() => setTab('owned')}
+          onClick={() => {
+            setTab('owned');
+            setIsMultiSelectMode(false);
+          }}
           className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
             tab === 'owned' ? 'bg-will-purple text-white' : 'text-will-light/60 hover:text-will-light'
           }`}
@@ -115,16 +227,109 @@ export default function DashboardPage() {
         </button>
         <button
           type="button"
-          onClick={() => setTab('inheriting')}
+          onClick={() => {
+            setTab('inheriting');
+            setIsMultiSelectMode(false);
+          }}
           className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
             tab === 'inheriting' ? 'bg-will-purple text-white' : 'text-will-light/60 hover:text-will-light'
           }`}
         >
           Inheriting
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setTab('guardianship');
+            setIsMultiSelectMode(false);
+          }}
+          className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
+            tab === 'guardianship' ? 'bg-will-purple text-white' : 'text-will-light/60 hover:text-will-light'
+          }`}
+        >
+          Guardianship ({guardianWills.length})
+        </button>
       </div>
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
+      {/* Batch Top-up Form Panel */}
+      {tab === 'owned' && isMultiSelectMode && selectedWillIds.length > 0 && (
+        <form
+          onSubmit={handleSubmitBatchTopUp}
+          className="rounded-xl border border-will-purple/30 bg-will-purple/5 p-5 space-y-4"
+        >
+          <h3 className="text-sm font-semibold text-will-light">
+            Batch Top-up ({selectedWillIds.length} will{selectedWillIds.length === 1 ? '' : 's'} selected)
+          </h3>
+          <p className="text-xs text-will-light/60">
+            Specify the top-up amount for each selected will.
+          </p>
+
+          <div className="space-y-3">
+            {selectedWillIds.map((willId) => {
+              const will = ownedWills.find((w) => w.id === willId);
+              const result = batchResults[willId];
+              return (
+                <div
+                  key={willId}
+                  className="flex flex-col gap-2 p-3 rounded-lg bg-white/5 border border-white/5 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <span className="font-semibold text-sm text-will-light">Will #{willId}</span>
+                    <span className="text-xs text-will-light/50 block">
+                      Current balance: {will ? formatUSDC(BigInt(will.balance)) : '0.00'} USDC
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:items-end gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="Amount (USDC)"
+                        required
+                        value={batchAmounts[willId] || ''}
+                        onChange={(e) => handleAmountChange(willId, e.target.value)}
+                        className="rounded-lg border border-white/10 bg-will-dark px-3 py-1 text-sm text-will-light focus:border-will-purple focus:outline-none w-36"
+                      />
+                      <span className="text-xs text-will-light/70">USDC</span>
+                    </div>
+
+                    {result && (
+                      <span
+                        className={`text-xs font-medium ${
+                          result.status === 'success' ? 'text-emerald-400' : 'text-red-400'
+                        }`}
+                      >
+                        {result.status === 'success' ? '✓ Success' : `✗ ${result.message}`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-between items-center pt-2 border-t border-white/10">
+            <span className="text-sm font-semibold text-will-light">
+              Total Amount:{' '}
+              {Object.values(batchAmounts)
+                .reduce((sum, val) => sum + (Number(val) || 0), 0)
+                .toFixed(2)}{' '}
+              USDC
+            </span>
+            <button
+              type="submit"
+              disabled={batchSubmitting}
+              className="rounded-full bg-will-purple px-5 py-2 text-sm font-semibold text-white transition hover:bg-will-purple/90 disabled:opacity-60"
+            >
+              {batchSubmitting ? 'Submitting Batch…' : 'Submit Batch Top-up'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -135,17 +340,30 @@ export default function DashboardPage() {
         <div className="rounded-xl border border-dashed border-white/20 p-8 text-center text-sm text-will-light/60">
           {tab === 'owned'
             ? "You haven't created any wills yet."
-            : "No one has named you as a beneficiary yet."}
+            : tab === 'inheriting'
+              ? "No one has named you as a beneficiary yet."
+              : "You are not designated as a guardian for any wills."}
         </div>
       ) : (
         <div className="space-y-3">
           {activeList.map((will) => (
-            <WillCard
-              key={will.id}
-              will={will}
-              onCheckIn={tab === 'owned' ? handleCheckIn : undefined}
-              checkingIn={checkingInId === will.id}
-            />
+            <div key={will.id} className="flex items-center gap-3">
+              {tab === 'owned' && isMultiSelectMode && (
+                <input
+                  type="checkbox"
+                  checked={selectedWillIds.includes(will.id)}
+                  onChange={() => handleToggleSelectWill(will.id)}
+                  className="h-5 w-5 rounded border-white/10 bg-white/5 text-will-purple focus:ring-will-purple accent-will-purple cursor-pointer"
+                />
+              )}
+              <div className="flex-1">
+                <WillCard
+                  will={will}
+                  onCheckIn={tab === 'owned' ? handleCheckIn : undefined}
+                  checkingIn={checkingInId === will.id}
+                />
+              </div>
+            </div>
           ))}
         </div>
       )}
