@@ -5,9 +5,22 @@ const GUARDIAN_THRESHOLD = 2;
 export interface GuardianPanelProps {
   guardians: string[];
   guardianVotes: number;
+  isGuardian?: boolean;
+  isActive?: boolean;
+  isCastingVote?: boolean;
+  onCastVote?: () => void;
+  error?: string | null;
 }
 
-export function GuardianPanel({ guardians, guardianVotes }: GuardianPanelProps) {
+export function GuardianPanel({
+  guardians,
+  guardianVotes,
+  isGuardian = false,
+  isActive = false,
+  isCastingVote = false,
+  onCastVote,
+  error,
+}: GuardianPanelProps) {
   if (guardians.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -42,6 +55,17 @@ export function GuardianPanel({ guardians, guardianVotes }: GuardianPanelProps) 
           </li>
         ))}
       </ul>
+      {isGuardian && isActive ? (
+        <button
+          type="button"
+          onClick={onCastVote}
+          disabled={isCastingVote}
+          className="mt-3 rounded-full bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-500/90 disabled:opacity-60"
+        >
+          {isCastingVote ? 'Casting vote…' : 'Cast guardian vote'}
+        </button>
+      ) : null}
+      {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
       <p className="mt-2 text-xs text-will-light/50">
         Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.
       </p>

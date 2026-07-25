@@ -37,6 +37,21 @@ function graceDeadline(will: Will): Date | null {
   return new Date(will.triggerTime.getTime() + will.gracePeriodDays * 86_400 * 1000);
 }
 
+function getGuardianVoteErrorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('already voted')) {
+    return 'This guardian has already cast a vote for this will.';
+  }
+
+  if (normalized.includes('not a guardian') || normalized.includes('not guardian')) {
+    return 'Only listed guardians can cast a vote for this will.';
+  }
+
+  return err instanceof Error ? err.message : 'Guardian vote failed';
+}
+
 export default function WillDetailPage() {
   const params = useParams<{ id: string }>();
   const willId = params.id;
@@ -46,6 +61,7 @@ export default function WillDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [castingVoteId, setCastingVoteId] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
 
   const [showTopUp, setShowTopUp] = useState(false);
@@ -78,7 +94,11 @@ export default function WillDetailPage() {
     setActivity((prev) => [{ action, txHash, at: new Date() }, ...prev]);
   }
 
-  async function runAction(name: string, fn: () => Promise<{ txHash: string }>) {
+  async function runAction(
+    name: string,
+    fn: () => Promise<{ txHash: string }>,
+    errorMessage?: (err: unknown) => string,
+  ) {
     setBusyAction(name);
     setError(null);
     try {
@@ -86,7 +106,7 @@ export default function WillDetailPage() {
       recordActivity(name, txHash);
       await refetch();
     } catch (err) {
-      setError(err instanceof Error ? err.message : `${name} failed`);
+      setError(errorMessage ? errorMessage(err) : err instanceof Error ? err.message : `${name} failed`);
     } finally {
       setBusyAction(null);
     }
@@ -116,6 +136,7 @@ export default function WillDetailPage() {
   }
 
   const isOwner = publicKey === will.owner;
+  const isGuardian = !!publicKey && will.guardians.includes(publicKey);
   const client = getSoroWillClient();
 
   const checkinDeadline = nextCheckinDeadline(will);
@@ -298,7 +319,20 @@ export default function WillDetailPage() {
         </table>
       </div>
 
-      <GuardianPanel guardians={will.guardians} guardianVotes={will.guardianVotes} />
+      <GuardianPanel
+        guardians={will.guardians}
+        guardianVotes={will.guardianVotes}
+        isGuardian={isGuardian}
+        isActive={will.status === WillStatus.Active}
+        isCastingVote={castingVoteId === will.id}
+        onCastVote={() => {
+          setCastingVoteId(will.id);
+          void runAction('cast_guardian_vote', () => client.guardianTrigger(will.id), getGuardianVoteErrorMessage).finally(
+            () => setCastingVoteId(null),
+          );
+        }}
+        error={error}
+      />
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <h2 className="text-sm font-semibold text-will-light">Recent activity</h2>
