@@ -3,13 +3,31 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
-import { type Will } from '@sorowill/sdk';
+import { WillStatus, type Will } from '@sorowill/sdk';
 
 import { safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
 import { WillCard } from '@/components/WillCard';
 
+// TODO(#5): Add an activity feed (check-ins, top-ups, guardian votes) once
+// @sorowill/sdk exposes an event subscription/query API — SoroWillClient
+// currently only exposes will reads/writes, no event history.
+
 type Tab = 'owned' | 'inheriting';
+type StatusFilter = 'all' | WillStatus;
+
+const STATUS_FILTERS: StatusFilter[] = ['all', WillStatus.Active, WillStatus.Triggered, WillStatus.Released, WillStatus.Cancelled];
+
+function matchesSearch(will: Will, query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+  if (will.id.toLowerCase().includes(normalized)) {
+    return true;
+  }
+  return will.beneficiaries.some((beneficiary) => beneficiary.address.toLowerCase().includes(normalized));
+}
 
 function CardSkeleton() {
   return (
@@ -27,6 +45,8 @@ export default function DashboardPage() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [checkedWallet, setCheckedWallet] = useState(false);
   const [tab, setTab] = useState<Tab>('owned');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [ownedWills, setOwnedWills] = useState<Will[]>([]);
   const [inheritingWills, setInheritingWills] = useState<Will[]>([]);
   const [loading, setLoading] = useState(false);
@@ -89,7 +109,10 @@ export default function DashboardPage() {
     );
   }
 
-  const activeList = tab === 'owned' ? ownedWills : inheritingWills;
+  const activeList = (tab === 'owned' ? ownedWills : inheritingWills).filter(
+    (will) => matchesSearch(will, search) && (statusFilter === 'all' || will.status === statusFilter),
+  );
+  const isFiltering = search.trim() !== '' || statusFilter !== 'all';
 
   return (
     <div className="space-y-6">
@@ -124,6 +147,27 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search by will ID or beneficiary address"
+          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+        />
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
+        >
+          {STATUS_FILTERS.map((status) => (
+            <option key={status} value={status} className="bg-will-dark">
+              {status === 'all' ? 'All statuses' : status}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
       {loading ? (
@@ -133,9 +177,11 @@ export default function DashboardPage() {
         </div>
       ) : activeList.length === 0 ? (
         <div className="rounded-xl border border-dashed border-white/20 p-8 text-center text-sm text-will-light/60">
-          {tab === 'owned'
-            ? "You haven't created any wills yet."
-            : "No one has named you as a beneficiary yet."}
+          {isFiltering
+            ? 'No wills match your search or filter.'
+            : tab === 'owned'
+              ? "You haven't created any wills yet."
+              : "No one has named you as a beneficiary yet."}
         </div>
       ) : (
         <div className="space-y-3">

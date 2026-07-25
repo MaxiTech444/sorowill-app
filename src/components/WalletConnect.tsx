@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 
 import { safeConnectWallet, safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 
+// TODO(#4): Replace this Freighter-only connect flow with a wallet-selection
+// UI once @sorowill/sdk ships adapters for other wallets (Albedo, xBull,
+// etc.) — today the SDK only exports Freighter-specific wallet functions
+// (connectWallet/getPublicKey/isFreighterInstalled), no adapter abstraction.
 export function WalletConnect() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
