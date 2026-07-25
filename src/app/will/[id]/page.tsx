@@ -298,7 +298,7 @@ export default function WillDetailPage() {
         </table>
       </div>
 
-      <GuardianPanel guardians={will.guardians} guardianVotes={will.guardianVotes} />
+      <GuardianPanel guardians={will.guardians} guardianVotes={will.guardianVotes} isOwner={isOwner} willId={will.id} />
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <h2 className="text-sm font-semibold text-will-light">Recent activity</h2>
