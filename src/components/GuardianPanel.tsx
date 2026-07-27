@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { truncateAddress } from '@/lib/freighter';
 
 const GUARDIAN_THRESHOLD = 2;
@@ -34,6 +35,18 @@ export function GuardianPanel({
       </div>
     );
   }
+
+  const handleCopy = async (index: number) => {
+    if (typeof window === 'undefined' || !willId) return;
+    const inviteUrl = `${window.location.origin}/guardian/onboard?willId=${willId}`;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy invite link', err);
+    }
+  };
 
   return (
     <section className="rounded-xl border border-white/10 bg-white/5 p-4" aria-labelledby="guardians-heading">
@@ -87,3 +100,4 @@ export function GuardianPanel({
     </section>
   );
 }
+

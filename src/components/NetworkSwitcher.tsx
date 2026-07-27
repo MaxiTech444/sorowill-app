@@ -1,0 +1,59 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { getNetwork } from '@/lib/sorowill';
+import { type SoroWillNetwork } from '@sorowill/sdk';
+
+export function NetworkSwitcher() {
+  const [network, setNetwork] = useState<SoroWillNetwork>('testnet');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setNetwork(getNetwork());
+    setMounted(true);
+  }, []);
+
+  function handleNetworkChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    const newNetwork = event.target.value as SoroWillNetwork;
+    if (newNetwork === network) return;
+
+    const confirmSwitch = window.confirm(
+      `Warning: Switching to ${newNetwork} may require you to reconnect your wallet and switch the network inside your Freighter extension. Do you want to proceed?`
+    );
+
+    if (confirmSwitch) {
+      window.localStorage.setItem('sorowill_network', newNetwork);
+      setNetwork(newNetwork);
+      // Reload the page to reconstruct client and clear/reset state
+      window.location.reload();
+    } else {
+      // Revert select input
+      event.target.value = network;
+    }
+  }
+
+  if (!mounted) {
+    return <div className="h-9 w-28 rounded-full bg-white/5 animate-pulse" />;
+  }
+
+  return (
+    <div className="relative inline-flex items-center">
+      <select
+        value={network}
+        onChange={handleNetworkChange}
+        className={`rounded-full border px-3 py-1 text-xs font-semibold bg-will-dark cursor-pointer focus:outline-none transition-all duration-200 ${
+          network === 'mainnet'
+            ? 'border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60'
+            : 'border-amber-500/30 text-amber-400 hover:border-amber-500/60'
+        }`}
+      >
+        <option value="testnet" className="bg-will-dark text-amber-400 font-semibold">
+          ● Testnet
+        </option>
+        <option value="mainnet" className="bg-will-dark text-emerald-400 font-semibold">
+          ● Mainnet
+        </option>
+      </select>
+    </div>
+  );
+}

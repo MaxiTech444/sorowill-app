@@ -498,6 +498,7 @@ export default function WillDetailPage() {
         </table>
       </div>
 
+      <GuardianPanel guardians={will.guardians} guardianVotes={will.guardianVotes} isOwner={isOwner} willId={will.id} />
       <GuardianPanel
         guardians={will.guardians}
         guardianVotes={will.guardianVotes}
