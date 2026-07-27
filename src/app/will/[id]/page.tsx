@@ -275,8 +275,7 @@ export default function WillDetailPage() {
           </button>
         ) : null}
 
-        {!isOwner || will.status === WillStatus.Active ? (
-          checkinOverdue ? (
+        {!isOwner && checkinOverdue ? (
             <button
               type="button"
               onClick={() => runAction('trigger_will', () => client.triggerWill(will.id))}
@@ -285,8 +284,7 @@ export default function WillDetailPage() {
             >
               {busyAction === 'trigger_will' ? 'Triggering…' : 'Trigger Will'}
             </button>
-          ) : null
-        ) : null}
+          ) : null}
 
         {graceExpired ? (
           <button
