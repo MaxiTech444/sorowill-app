@@ -3,17 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
-import { type Will, formatUSDC, toStroops } from '@sorowill/sdk';
+import { WillStatus, type Will, formatUSDC, toStroops } from '@sorowill/sdk';
 
 import { safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient, getWillsByGuardian } from '@/lib/sorowill';
-import { WillCard } from '@/components/WillCard';
-
-type Tab = 'owned' | 'inheriting' | 'guardianship';
-import { WillStatus, type Will } from '@sorowill/sdk';
-
-import { safeGetPublicKey } from '@/lib/freighter';
-import { getSoroWillClient } from '@/lib/sorowill';
 import { useToast } from '@/components/Toast';
 import { WillCard } from '@/components/WillCard';
 
@@ -21,7 +14,7 @@ import { WillCard } from '@/components/WillCard';
 // @sorowill/sdk exposes an event subscription/query API — SoroWillClient
 // currently only exposes will reads/writes, no event history.
 
-type Tab = 'owned' | 'inheriting';
+type Tab = 'owned' | 'inheriting' | 'guardianship';
 type StatusFilter = 'all' | WillStatus;
 
 const STATUS_FILTERS: StatusFilter[] = ['all', WillStatus.Active, WillStatus.Triggered, WillStatus.Released, WillStatus.Cancelled];
@@ -182,6 +175,18 @@ export default function DashboardPage() {
     }
   }
 
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabName: Tab) => {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      const tabs: Tab[] = ['owned', 'inheriting', 'guardianship'];
+      const idx = tabs.indexOf(tabName);
+      const newIdx = event.key === 'ArrowLeft'
+        ? (idx - 1 + tabs.length) % tabs.length
+        : (idx + 1) % tabs.length;
+      setTab(tabs[newIdx]);
+    }
+  };
+
   if (checkedWallet && !publicKey) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
@@ -193,8 +198,13 @@ export default function DashboardPage() {
     );
   }
 
-  const activeList =
+  const rawList =
     tab === 'owned' ? ownedWills : tab === 'inheriting' ? inheritingWills : guardianWills;
+
+  const activeList = rawList.filter(
+    (will) => matchesSearch(will, search) && (statusFilter === 'all' || will.status === statusFilter),
+  );
+  const isFiltering = search.trim() !== '' || statusFilter !== 'all';
 
   return (
     <div className="space-y-6">
@@ -214,7 +224,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <h1 className="text-2xl font-bold text-will-light">Dashboard</h1>
         <div className="flex items-center gap-3">
           {tab === 'owned' && ownedWills.length > 0 && (
@@ -237,34 +247,11 @@ export default function DashboardPage() {
           )}
           <Link
             href="/will/new"
-            className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90"
+            className="w-full rounded-full bg-will-purple px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-will-purple/90 sm:w-auto"
           >
             + New Will
           </Link>
         </div>
-  const activeList = (tab === 'owned' ? ownedWills : inheritingWills).filter(
-    (will) => matchesSearch(will, search) && (statusFilter === 'all' || will.status === statusFilter),
-  );
-  const isFiltering = search.trim() !== '' || statusFilter !== 'all';
-
-  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabName: Tab) => {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      event.preventDefault();
-      const newTab = tabName === 'owned' ? 'inheriting' : 'owned';
-      setTab(newTab);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <h1 className="text-2xl font-bold text-will-light">Dashboard</h1>
-        <Link
-          href="/will/new"
-          className="w-full rounded-full bg-will-purple px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-will-purple/90 sm:w-auto"
-        >
-          + New Will
-        </Link>
       </div>
 
       <div className="flex gap-1 rounded-full border border-white/10 bg-white/5 p-1" role="tablist">
@@ -274,11 +261,10 @@ export default function DashboardPage() {
             setTab('owned');
             setIsMultiSelectMode(false);
           }}
-          onClick={() => setTab('owned')}
           onKeyDown={(e) => handleTabKeyDown(e, 'owned')}
           role="tab"
           aria-selected={tab === 'owned'}
-          aria-controls="owned-panel"
+          aria-controls="tab-panel"
           className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
             tab === 'owned' ? 'bg-will-purple text-white' : 'text-will-light/60 hover:text-will-light'
           }`}
@@ -291,11 +277,10 @@ export default function DashboardPage() {
             setTab('inheriting');
             setIsMultiSelectMode(false);
           }}
-          onClick={() => setTab('inheriting')}
           onKeyDown={(e) => handleTabKeyDown(e, 'inheriting')}
           role="tab"
           aria-selected={tab === 'inheriting'}
-          aria-controls="inheriting-panel"
+          aria-controls="tab-panel"
           className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
             tab === 'inheriting' ? 'bg-will-purple text-white' : 'text-will-light/60 hover:text-will-light'
           }`}
@@ -308,6 +293,10 @@ export default function DashboardPage() {
             setTab('guardianship');
             setIsMultiSelectMode(false);
           }}
+          onKeyDown={(e) => handleTabKeyDown(e, 'guardianship')}
+          role="tab"
+          aria-selected={tab === 'guardianship'}
+          aria-controls="tab-panel"
           className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
             tab === 'guardianship' ? 'bg-will-purple text-white' : 'text-will-light/60 hover:text-will-light'
           }`}
@@ -337,7 +326,6 @@ export default function DashboardPage() {
         </select>
       </div>
 
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
       {error ? <p className="text-sm text-red-400" role="alert">{error}</p> : null}
 
       {/* Batch Top-up Form Panel */}
@@ -418,69 +406,67 @@ export default function DashboardPage() {
         </form>
       )}
 
-      {loading ? (
-      <div id={tab === 'owned' ? 'owned-panel' : 'inheriting-panel'} role="tabpanel">
+      <div id="tab-panel" role="tabpanel">
         {loading ? (
-        <div className="space-y-3">
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
-      ) : activeList.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-white/20 p-8 text-center text-sm text-will-light/60">
-          {tab === 'owned'
-            ? "You haven't created any wills yet."
-            : tab === 'inheriting'
-              ? "No one has named you as a beneficiary yet."
-              : "You are not designated as a guardian for any wills."}
-          {isFiltering
-            ? 'No wills match your search or filter.'
-            : tab === 'owned'
-              ? "You haven't created any wills yet."
-              : "No one has named you as a beneficiary yet."}
-        <div className="rounded-xl border border-dashed border-white/20 bg-white/5 p-8 text-center">
-          <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
-            <span className="text-lg">{tab === 'owned' ? '📝' : '👥'}</span>
+          <div className="space-y-3">
+            <CardSkeleton />
+            <CardSkeleton />
           </div>
-          <h3 className="font-semibold text-will-light">
-            {tab === 'owned' ? 'No wills yet' : 'Not a beneficiary yet'}
-          </h3>
-          <p className="mt-1 text-sm text-will-light/60">
-            {tab === 'owned'
-              ? "You haven't created any wills. Start protecting your crypto legacy today."
-              : "No one has named you as a beneficiary yet."}
-          </p>
-          {tab === 'owned' && (
-            <Link
-              href="/will/new"
-              className="mt-4 inline-block rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90"
-            >
-              Create your first will
-            </Link>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {activeList.map((will) => (
-            <div key={will.id} className="flex items-center gap-3">
-              {tab === 'owned' && isMultiSelectMode && (
-                <input
-                  type="checkbox"
-                  checked={selectedWillIds.includes(will.id)}
-                  onChange={() => handleToggleSelectWill(will.id)}
-                  className="h-5 w-5 rounded border-white/10 bg-white/5 text-will-purple focus:ring-will-purple accent-will-purple cursor-pointer"
-                />
-              )}
-              <div className="flex-1">
-                <WillCard
-                  will={will}
-                  onCheckIn={tab === 'owned' ? handleCheckIn : undefined}
-                  checkingIn={checkingInId === will.id}
-                />
-              </div>
+        ) : activeList.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-white/20 bg-white/5 p-8 text-center">
+            <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
+              <span className="text-lg">{tab === 'owned' ? '📝' : tab === 'inheriting' ? '👥' : '👨‍⚖️'}</span>
             </div>
-          ))}
-        </div>
-      )}
+            <h3 className="font-semibold text-will-light">
+              {isFiltering
+                ? 'No wills match your search or filter.'
+                : tab === 'owned'
+                  ? 'No wills yet'
+                  : tab === 'inheriting'
+                    ? 'Not a beneficiary yet'
+                    : 'No guardianships'}
+            </h3>
+            <p className="mt-1 text-sm text-will-light/60">
+              {isFiltering
+                ? 'Try adjusting your search or filter criteria.'
+                : tab === 'owned'
+                  ? "You haven't created any wills. Start protecting your crypto legacy today."
+                  : tab === 'inheriting'
+                    ? 'No one has named you as a beneficiary yet.'
+                    : 'You are not designated as a guardian for any wills.'}
+            </p>
+            {tab === 'owned' && !isFiltering && (
+              <Link
+                href="/will/new"
+                className="mt-4 inline-block rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90"
+              >
+                Create your first will
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {activeList.map((will) => (
+              <div key={will.id} className="flex items-center gap-3">
+                {tab === 'owned' && isMultiSelectMode && (
+                  <input
+                    type="checkbox"
+                    checked={selectedWillIds.includes(will.id)}
+                    onChange={() => handleToggleSelectWill(will.id)}
+                    className="h-5 w-5 rounded border-white/10 bg-white/5 text-will-purple focus:ring-will-purple accent-will-purple cursor-pointer"
+                  />
+                )}
+                <div className="flex-1">
+                  <WillCard
+                    will={will}
+                    onCheckIn={tab === 'owned' ? handleCheckIn : undefined}
+                    checkingIn={checkingInId === will.id}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
