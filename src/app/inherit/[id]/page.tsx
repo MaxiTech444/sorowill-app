@@ -141,7 +141,7 @@ export default function InheritPage() {
           type="button"
           onClick={handleClaim}
           disabled={claiming}
-          className="w-full rounded-full bg-will-purple px-4 py-3 text-sm font-semibold text-white transition hover:bg-will-purple/90 disabled:opacity-60"
+          className="w-full rounded-full bg-will-purple px-4 py-3 text-sm font-semibold text-white transition hover:bg-will-purple/90 disabled:opacity-60 active:scale-95"
         >
           {claiming ? 'Claiming…' : 'Claim Inheritance'}
         </button>

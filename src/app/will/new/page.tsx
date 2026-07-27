@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '@sorowill/sdk';
 
@@ -16,6 +16,8 @@ const STEP_LABELS = ['Amount', 'Beneficiaries', 'Timing', 'Guardians', 'Review']
 
 export default function NewWillPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const cloneFromId = searchParams.get('cloneFrom');
   const [step, setStep] = useState(0);
 
   const [token, setToken] = useState('');
@@ -24,9 +26,30 @@ export default function NewWillPage() {
   const [checkinPeriodDays, setCheckinPeriodDays] = useState(90);
   const [gracePeriodDays, setGracePeriodDays] = useState(7);
   const [guardians, setGuardians] = useState<string[]>([]);
+  const [cloneLoading, setCloneLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (cloneFromId) {
+      setCloneLoading(true);
+      getSoroWillClient()
+        .getWill(cloneFromId)
+        .then((sourceWill) => {
+          setToken(sourceWill.token);
+          setBeneficiaries(sourceWill.beneficiaries);
+          setCheckinPeriodDays(sourceWill.checkinPeriodDays);
+          setGracePeriodDays(sourceWill.gracePeriodDays);
+          setGuardians(sourceWill.guardians);
+          setCloneLoading(false);
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : 'Failed to load will to clone');
+          setCloneLoading(false);
+        });
+    }
+  }, [cloneFromId]);
 
   const amountValid = amount.trim() !== '' && Number(amount) > 0 && token.trim() !== '';
   const beneficiariesValid = validateBeneficiaries(beneficiaries) && beneficiaries.every((b) => b.address.trim() !== '');
@@ -68,10 +91,10 @@ export default function NewWillPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-6 px-4 sm:space-y-8 sm:px-0">
       <div>
-        <h1 className="text-2xl font-bold text-will-light">Create a will</h1>
-        <p className="mt-1 text-sm text-will-light/60">
+        <h1 className="text-xl font-bold text-will-light sm:text-2xl">Create a will</h1>
+        <p className="mt-1 text-xs text-will-light/60 sm:text-sm">
           Step {step + 1} of {STEP_LABELS.length}: {STEP_LABELS[step]}
         </p>
         <div className="mt-3 flex gap-1.5">
@@ -79,12 +102,20 @@ export default function NewWillPage() {
             <span
               key={label}
               className={`h-1.5 flex-1 rounded-full ${index <= step ? 'bg-will-purple' : 'bg-white/10'}`}
+              aria-hidden="true"
             />
           ))}
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-6">
+      {cloneLoading && (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-6">
+          <p className="text-sm text-will-light/70">Loading will to duplicate...</p>
+        </div>
+      )}
+
+      {!cloneLoading && (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-6">
         {step === 0 ? (
           <div className="space-y-4">
             <div>
@@ -254,16 +285,17 @@ export default function NewWillPage() {
             </dl>
           </div>
         ) : null}
-      </div>
+        </div>
+      )}
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
-      <div className="flex justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
         <button
           type="button"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0 || submitting}
-          className="rounded-full border border-white/20 px-5 py-2 text-sm text-will-light/70 transition hover:border-white/40 disabled:opacity-40"
+          className="w-full rounded-full border border-white/20 px-5 py-2 text-sm text-will-light/70 transition hover:border-white/40 disabled:opacity-40 sm:w-auto"
         >
           Back
         </button>
@@ -272,7 +304,7 @@ export default function NewWillPage() {
             type="button"
             onClick={() => setStep((s) => Math.min(STEP_LABELS.length - 1, s + 1))}
             disabled={!canGoNext}
-            className="rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             Next
           </button>
@@ -281,7 +313,7 @@ export default function NewWillPage() {
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {submitting ? 'Creating…' : 'Create Will'}
           </button>
