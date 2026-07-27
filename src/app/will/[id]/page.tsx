@@ -67,6 +67,7 @@ export default function WillDetailPage() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [castingVoteId, setCastingVoteId] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [exportingCertificate, setExportingCertificate] = useState(false);
 
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('');
@@ -104,6 +105,24 @@ export default function WillDetailPage() {
     setActivity((prev) => [{ action, txHash, at: new Date() }, ...prev]);
   }
 
+  async function handleExportCertificate() {
+    if (!will) {
+      return;
+    }
+    setExportingCertificate(true);
+    setError(null);
+    try {
+      const { downloadWillCertificate } = await import('@/lib/certificate');
+      const verifyUrl = `${window.location.origin}/verify/${will.id}`;
+      await downloadWillCertificate(will, verifyUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export certificate');
+    } finally {
+      setExportingCertificate(false);
+    }
+  }
+
+  async function runAction(name: string, fn: () => Promise<{ txHash: string }>) {
   async function runAction(
     name: string,
     fn: () => Promise<{ txHash: string }>,
@@ -197,9 +216,19 @@ export default function WillDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-will-light">Will #{will.id}</h1>
-        <p className="text-sm text-will-light/50">Owner: {truncateAddress(will.owner)}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-will-light">Will #{will.id}</h1>
+          <p className="text-sm text-will-light/50">Owner: {truncateAddress(will.owner)}</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleExportCertificate}
+          disabled={exportingCertificate}
+          className="rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {exportingCertificate ? 'Generating…' : 'Export Certificate (PDF)'}
+        </button>
       </div>
 
       <StatusBanner status={will.status} />
