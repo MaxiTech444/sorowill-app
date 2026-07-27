@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '@sorowill/sdk';
 
@@ -16,6 +16,8 @@ const STEP_LABELS = ['Amount', 'Beneficiaries', 'Timing', 'Guardians', 'Review']
 
 export default function NewWillPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const cloneFromId = searchParams.get('cloneFrom');
   const [step, setStep] = useState(0);
 
   const [token, setToken] = useState('');
@@ -24,9 +26,30 @@ export default function NewWillPage() {
   const [checkinPeriodDays, setCheckinPeriodDays] = useState(90);
   const [gracePeriodDays, setGracePeriodDays] = useState(7);
   const [guardians, setGuardians] = useState<string[]>([]);
+  const [cloneLoading, setCloneLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (cloneFromId) {
+      setCloneLoading(true);
+      getSoroWillClient()
+        .getWill(cloneFromId)
+        .then((sourceWill) => {
+          setToken(sourceWill.token);
+          setBeneficiaries(sourceWill.beneficiaries);
+          setCheckinPeriodDays(sourceWill.checkinPeriodDays);
+          setGracePeriodDays(sourceWill.gracePeriodDays);
+          setGuardians(sourceWill.guardians);
+          setCloneLoading(false);
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : 'Failed to load will to clone');
+          setCloneLoading(false);
+        });
+    }
+  }, [cloneFromId]);
 
   const amountValid = amount.trim() !== '' && Number(amount) > 0 && token.trim() !== '';
   const beneficiariesValid = validateBeneficiaries(beneficiaries) && beneficiaries.every((b) => b.address.trim() !== '');
@@ -68,10 +91,10 @@ export default function NewWillPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-6 px-4 sm:space-y-8 sm:px-0">
       <div>
-        <h1 className="text-2xl font-bold text-will-light">Create a will</h1>
-        <p className="mt-1 text-sm text-will-light/60">
+        <h1 className="text-xl font-bold text-will-light sm:text-2xl">Create a will</h1>
+        <p className="mt-1 text-xs text-will-light/60 sm:text-sm">
           Step {step + 1} of {STEP_LABELS.length}: {STEP_LABELS[step]}
         </p>
         <div className="mt-3 flex gap-1.5">
@@ -79,27 +102,42 @@ export default function NewWillPage() {
             <span
               key={label}
               className={`h-1.5 flex-1 rounded-full ${index <= step ? 'bg-will-purple' : 'bg-white/10'}`}
+              aria-hidden="true"
             />
           ))}
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-6">
+      {cloneLoading && (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-6">
+          <p className="text-sm text-will-light/70">Loading will to duplicate...</p>
+        </div>
+      )}
+
+      {!cloneLoading && (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-6">
         {step === 0 ? (
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-will-light">Token contract address</label>
+              <label htmlFor="token-address" className="text-sm font-medium text-will-light">
+                Token contract address
+              </label>
               <input
+                id="token-address"
                 type="text"
                 value={token}
                 onChange={(event) => setToken(event.target.value)}
                 placeholder="USDC Stellar Asset Contract (C...)"
                 className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                aria-describedby="token-help"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-will-light">Amount (USDC)</label>
+              <label htmlFor="amount" className="text-sm font-medium text-will-light">
+                Amount (USDC)
+              </label>
               <input
+                id="amount"
                 type="number"
                 min={0}
                 step="0.01"
@@ -107,6 +145,7 @@ export default function NewWillPage() {
                 onChange={(event) => setAmount(event.target.value)}
                 placeholder="1000.00"
                 className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                aria-describedby="amount-help"
               />
             </div>
           </div>
@@ -115,15 +154,16 @@ export default function NewWillPage() {
         {step === 1 ? <BeneficiaryForm value={beneficiaries} onChange={setBeneficiaries} /> : null}
 
         {step === 2 ? (
-          <div className="space-y-6">
+          <fieldset className="space-y-6">
             <div>
-              <label className="text-sm font-medium text-will-light">Check-in period</label>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <legend className="text-sm font-medium text-will-light">Check-in period</legend>
+              <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Check-in period options">
                 {CHECKIN_OPTIONS.map((days) => (
                   <button
                     key={days}
                     type="button"
                     onClick={() => setCheckinPeriodDays(days)}
+                    aria-pressed={checkinPeriodDays === days}
                     className={`rounded-full px-4 py-1.5 text-sm transition ${
                       checkinPeriodDays === days
                         ? 'bg-will-purple text-white'
@@ -136,13 +176,14 @@ export default function NewWillPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-will-light">Grace period</label>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <legend className="text-sm font-medium text-will-light">Grace period</legend>
+              <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Grace period options">
                 {GRACE_OPTIONS.map((days) => (
                   <button
                     key={days}
                     type="button"
                     onClick={() => setGracePeriodDays(days)}
+                    aria-pressed={gracePeriodDays === days}
                     className={`rounded-full px-4 py-1.5 text-sm transition ${
                       gracePeriodDays === days
                         ? 'bg-will-purple text-white'
@@ -154,17 +195,18 @@ export default function NewWillPage() {
                 ))}
               </div>
             </div>
-          </div>
+          </fieldset>
         ) : null}
 
         {step === 3 ? (
-          <div className="space-y-3">
+          <fieldset className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-will-light">Guardians (optional, up to 3)</label>
+              <legend className="text-sm font-medium text-will-light">Guardians (optional, up to 3)</legend>
               <button
                 type="button"
                 onClick={addGuardian}
                 disabled={guardians.length >= 3}
+                aria-label={`Add guardian (${guardians.length} of 3)`}
                 className="text-xs font-medium text-will-purple hover:underline disabled:opacity-40"
               >
                 + Add guardian
@@ -175,7 +217,11 @@ export default function NewWillPage() {
             </p>
             {guardians.map((guardian, index) => (
               <div key={index} className="flex items-center gap-2">
+                <label htmlFor={`guardian-${index}`} className="sr-only">
+                  Guardian {index + 1} address
+                </label>
                 <input
+                  id={`guardian-${index}`}
                   type="text"
                   value={guardian}
                   onChange={(event) => updateGuardian(index, event.target.value)}
@@ -185,14 +231,14 @@ export default function NewWillPage() {
                 <button
                   type="button"
                   onClick={() => removeGuardian(index)}
-                  aria-label="Remove guardian"
+                  aria-label={`Remove guardian ${index + 1}`}
                   className="rounded-lg border border-white/10 px-2 py-2 text-will-light/60 transition hover:border-red-400/40 hover:text-red-400"
                 >
                   ✕
                 </button>
               </div>
             ))}
-          </div>
+          </fieldset>
         ) : null}
 
         {step === 4 ? (
@@ -239,16 +285,17 @@ export default function NewWillPage() {
             </dl>
           </div>
         ) : null}
-      </div>
+        </div>
+      )}
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
-      <div className="flex justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
         <button
           type="button"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0 || submitting}
-          className="rounded-full border border-white/20 px-5 py-2 text-sm text-will-light/70 transition hover:border-white/40 disabled:opacity-40"
+          className="w-full rounded-full border border-white/20 px-5 py-2 text-sm text-will-light/70 transition hover:border-white/40 disabled:opacity-40 sm:w-auto"
         >
           Back
         </button>
@@ -257,7 +304,7 @@ export default function NewWillPage() {
             type="button"
             onClick={() => setStep((s) => Math.min(STEP_LABELS.length - 1, s + 1))}
             disabled={!canGoNext}
-            className="rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             Next
           </button>
@@ -266,7 +313,7 @@ export default function NewWillPage() {
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {submitting ? 'Creating…' : 'Create Will'}
           </button>

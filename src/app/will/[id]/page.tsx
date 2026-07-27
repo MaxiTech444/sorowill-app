@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useParams } from 'next/navigation';
 
 import {
@@ -15,6 +15,8 @@ import {
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/Toast';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { GuardianPanel } from '@/components/GuardianPanel';
@@ -53,6 +55,8 @@ function getGuardianVoteErrorMessage(err: unknown): string {
 }
 
 export default function WillDetailPage() {
+  const toast = useToast();
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const willId = params.id;
 
@@ -68,6 +72,12 @@ export default function WillDetailPage() {
   const [topUpAmount, setTopUpAmount] = useState('');
   const [showEditBeneficiaries, setShowEditBeneficiaries] = useState(false);
   const [draftBeneficiaries, setDraftBeneficiaries] = useState<Beneficiary[]>([]);
+  const [showEarlyRelease, setShowEarlyRelease] = useState(false);
+  const [earlyReleaseAmount, setEarlyReleaseAmount] = useState('');
+  const [earlyReleaseRecipient, setEarlyReleaseRecipient] = useState('');
+  const [reminderEmail, setReminderEmail] = useState('');
+  const [reminderStatus, setReminderStatus] = useState<string | null>(null);
+  const [reminderPending, setReminderPending] = useState(false);
 
   const refetch = useCallback(async () => {
     try {
@@ -105,10 +115,48 @@ export default function WillDetailPage() {
       const { txHash } = await fn();
       recordActivity(name, txHash);
       await refetch();
+      const actionLabel = name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      toast.success(`${actionLabel} successful`);
     } catch (err) {
-      setError(errorMessage ? errorMessage(err) : err instanceof Error ? err.message : `${name} failed`);
+      const message = err instanceof Error ? err.message : `${name} failed`;
+      setError(message);
+      toast.error(message);
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function handleReminderSubscribe(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!will) {
+      setReminderStatus('The will details are still loading.');
+      return;
+    }
+
+    setReminderPending(true);
+    setReminderStatus(null);
+
+    try {
+      const response = await fetch('/api/reminders/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          willId: will.id,
+          email: reminderEmail,
+          owner: will.owner,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || 'Unable to register reminder');
+      }
+      setReminderStatus(`Reminder enabled for ${payload.subscription.email}.`);
+      setReminderEmail('');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to register reminder';
+      setReminderStatus(message);
+    } finally {
+      setReminderPending(false);
     }
   }
 
@@ -175,13 +223,13 @@ export default function WillDetailPage() {
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 sm:flex-wrap sm:flex-row">
         {isOwner && will.status === WillStatus.Active ? (
           <button
             type="button"
             onClick={() => runAction('check_in', () => client.checkIn(will.id))}
             disabled={busyAction !== null}
-            className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:opacity-60"
+            className="w-full rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:opacity-60 sm:w-auto"
           >
             {busyAction === 'check_in' ? 'Checking in…' : 'Check In'}
           </button>
@@ -192,7 +240,7 @@ export default function WillDetailPage() {
             type="button"
             onClick={() => runAction('emergency_checkin', () => client.emergencyCheckIn(will.id))}
             disabled={busyAction !== null}
-            className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500/90 disabled:opacity-60"
+            className="w-full rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500/90 disabled:opacity-60 sm:w-auto"
           >
             {busyAction === 'emergency_checkin' ? 'Submitting…' : 'Emergency Check In'}
           </button>
@@ -204,7 +252,7 @@ export default function WillDetailPage() {
               type="button"
               onClick={() => runAction('trigger_will', () => client.triggerWill(will.id))}
               disabled={busyAction !== null}
-              className="rounded-full bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-500/90 disabled:opacity-60"
+              className="w-full rounded-full bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-500/90 disabled:opacity-60 sm:w-auto"
             >
               {busyAction === 'trigger_will' ? 'Triggering…' : 'Trigger Will'}
             </button>
@@ -216,7 +264,7 @@ export default function WillDetailPage() {
             type="button"
             onClick={() => runAction('release_inheritance', () => client.releaseInheritance(will.id))}
             disabled={busyAction !== null}
-            className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:opacity-60"
+            className="w-full rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:opacity-60 sm:w-auto"
           >
             {busyAction === 'release_inheritance' ? 'Releasing…' : 'Release Inheritance'}
           </button>
@@ -227,22 +275,38 @@ export default function WillDetailPage() {
             <button
               type="button"
               onClick={() => setShowTopUp((s) => !s)}
-              className="rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40"
+              className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
             >
               Top Up
             </button>
             <button
               type="button"
+              onClick={() => setShowEarlyRelease((s) => !s)}
+              className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
+              title="Coming soon: requires SDK support"
+            >
+              Release Early
+            </button>
+            <button
+              type="button"
               onClick={() => setShowEditBeneficiaries((s) => !s)}
-              className="rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40"
+              className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
             >
               Update Beneficiaries
             </button>
             <button
               type="button"
+              onClick={() => router.push(`/will/new?cloneFrom=${will.id}`)}
+              className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
+              title="Coming soon: requires SDK support"
+            >
+              Duplicate
+            </button>
+            <button
+              type="button"
               onClick={() => runAction('cancel_will', () => client.cancelWill(will.id))}
               disabled={busyAction !== null}
-              className="rounded-full border border-red-400/40 px-4 py-2 text-sm text-red-300 transition hover:border-red-400/70 disabled:opacity-60"
+              className="w-full rounded-full border border-red-400/40 px-4 py-2 text-sm text-red-300 transition hover:border-red-400/70 disabled:opacity-60 sm:w-auto"
             >
               {busyAction === 'cancel_will' ? 'Cancelling…' : 'Cancel Will'}
             </button>
@@ -250,30 +314,116 @@ export default function WillDetailPage() {
         ) : null}
       </div>
 
-      {showTopUp ? (
+      {isOwner && will.status === WillStatus.Active ? (
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <label className="text-sm font-medium text-will-light">Top up amount (USDC)</label>
-          <div className="mt-2 flex gap-2">
+          <h2 className="text-sm font-semibold text-will-light">Check-in reminders</h2>
+          <p className="mt-1 text-sm text-will-light/60">
+            Receive an email 2+ weeks before the deadline and again when it&apos;s imminent.
+          </p>
+          <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={handleReminderSubscribe}>
             <input
+              type="email"
+              value={reminderEmail}
+              onChange={(event) => setReminderEmail(event.target.value)}
+              placeholder="you@example.com"
+              className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
+              required
+            />
+            <button
+              type="submit"
+              disabled={reminderPending}
+              className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:opacity-60"
+            >
+              {reminderPending ? 'Saving…' : 'Enable reminders'}
+            </button>
+          </form>
+          {reminderStatus ? <p className="mt-2 text-sm text-will-light/70">{reminderStatus}</p> : null}
+        </div>
+      ) : null}
+
+      {showTopUp ? (
+        <form
+          className="rounded-xl border border-white/10 bg-white/5 p-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            await runAction('top_up', () => client.topUp(will.id, toStroops(topUpAmount).toString()));
+            setTopUpAmount('');
+            setShowTopUp(false);
+          }}
+        >
+          <label htmlFor="topup-amount" className="text-sm font-medium text-will-light">
+            Top up amount (USDC)
+          </label>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input
+              id="topup-amount"
               type="number"
               min={0}
               step="0.01"
               value={topUpAmount}
               onChange={(event) => setTopUpAmount(event.target.value)}
               className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
+              aria-label="Top up amount in USDC"
             />
             <button
-              type="button"
-              onClick={async () => {
-                await runAction('top_up', () => client.topUp(will.id, toStroops(topUpAmount).toString()));
-                setTopUpAmount('');
-                setShowTopUp(false);
-              }}
+              type="submit"
               disabled={busyAction !== null || !topUpAmount}
-              className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-60 sm:w-auto"
             >
               Confirm
             </button>
+          </div>
+        </form>
+      ) : null}
+
+      {showEarlyRelease ? (
+        <div className="rounded-xl border border-will-purple/40 bg-will-purple/10 p-4">
+          <h3 className="text-sm font-semibold text-will-light">Release early to beneficiary</h3>
+          <div className="mt-3 space-y-3">
+            <div>
+              <label htmlFor="early-release-amount" className="text-xs text-will-light/70">
+                Amount (USDC)
+              </label>
+              <input
+                id="early-release-amount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={earlyReleaseAmount}
+                onChange={(event) => setEarlyReleaseAmount(event.target.value)}
+                placeholder="0.00"
+                className="mt-1 w-full rounded-lg border border-will-purple/30 bg-will-purple/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
+              />
+            </div>
+            <div>
+              <label htmlFor="early-release-recipient" className="text-xs text-will-light/70">
+                Recipient address
+              </label>
+              <input
+                id="early-release-recipient"
+                type="text"
+                value={earlyReleaseRecipient}
+                onChange={(event) => setEarlyReleaseRecipient(event.target.value)}
+                placeholder="Stellar address (G...)"
+                className="mt-1 w-full rounded-lg border border-will-purple/30 bg-will-purple/5 px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+              />
+            </div>
+            <p className="text-xs text-will-light/50">
+              Note: Partial early release requires SDK support (coming soon)
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEarlyRelease(false);
+                  setEarlyReleaseAmount('');
+                  setEarlyReleaseRecipient('');
+                }}
+                className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -337,7 +487,10 @@ export default function WillDetailPage() {
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <h2 className="text-sm font-semibold text-will-light">Recent activity</h2>
         {activity.length === 0 ? (
-          <p className="mt-2 text-sm text-will-light/50">No actions taken yet this session.</p>
+          <div className="mt-2 flex items-center gap-2 text-sm text-will-light/60">
+            <span>📋</span>
+            <p>No actions taken yet this session.</p>
+          </div>
         ) : (
           <ul className="mt-2 space-y-2">
             {activity.map((entry) => (

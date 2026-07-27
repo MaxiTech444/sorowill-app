@@ -9,8 +9,20 @@ const config: Config = {
         'will-dark': '#1E1B4B',
         'will-light': '#EEF2FF',
       },
+      backgroundColor: {
+        'light-bg-primary': '#f8fafc',
+        'light-bg-secondary': '#f1f5f9',
+      },
+      textColor: {
+        'light-text-primary': '#1e293b',
+        'light-text-secondary': '#475569',
+      },
+      borderColor: {
+        'light-border': 'rgba(0, 0, 0, 0.1)',
+      },
     },
   },
+  darkMode: ['selector', '[data-theme="dark"]'],
   plugins: [],
 };
 

@@ -18,7 +18,10 @@ export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps)
   const daysLeft = Math.ceil(secondsLeft / 86_400);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 transition hover:border-will-purple/40 sm:flex-row sm:items-center sm:justify-between">
+    <article
+      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 transition hover:border-will-purple/40 sm:flex-row sm:items-center sm:justify-between"
+      aria-label={`Will #${will.id}, ${formatUSDC(BigInt(will.balance))} USDC`}
+    >
       <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`/will/${will.id}`} className="font-semibold text-will-light hover:underline">
@@ -28,7 +31,7 @@ export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps)
         </div>
         <p className="text-sm text-will-light/70">{formatUSDC(BigInt(will.balance))} USDC locked</p>
         {will.status === WillStatus.Active ? (
-          <p className="text-xs text-will-light/50">
+          <p className="text-xs text-will-light/50" role="status">
             {secondsLeft > 0 ? `Check-in due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}` : 'Check-in overdue'}
           </p>
         ) : null}
@@ -40,6 +43,7 @@ export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps)
             type="button"
             onClick={() => onCheckIn(will.id)}
             disabled={checkingIn}
+            aria-label={`Check in for will ${will.id}`}
             className="rounded-full bg-will-purple px-4 py-1.5 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {checkingIn ? 'Checking in…' : 'Check In'}
@@ -48,10 +52,11 @@ export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps)
         <Link
           href={`/will/${will.id}`}
           className="rounded-full border border-white/20 px-4 py-1.5 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light"
+          aria-label={`View details for will ${will.id}`}
         >
           Details
         </Link>
       </div>
-    </div>
+    </article>
   );
 }
