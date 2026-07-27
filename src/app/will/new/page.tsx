@@ -7,6 +7,7 @@ import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '
 
 import { truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
+import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 
 const CHECKIN_OPTIONS = [30, 60, 90, 180, 365];
@@ -39,6 +40,12 @@ export default function NewWillPage() {
   const [guardians, setGuardians] = useState<string[]>([]);
   const [cloneLoading, setCloneLoading] = useState(false);
   const [resumeAvailable, setResumeAvailable] = useState(false);
+
+  const [resolvedGuardians, setResolvedGuardians] = useState<Map<number, string>>(new Map());
+  const [resolvingGuardianIndex, setResolvingGuardianIndex] = useState<number | null>(null);
+  const [guardianResolutionError, setGuardianResolutionError] = useState<Map<number, string>>(
+    new Map(),
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +126,58 @@ export default function NewWillPage() {
 
   function updateGuardian(index: number, address: string) {
     setGuardians((prev) => prev.map((g, i) => (i === index ? address : g)));
+    setResolvedGuardians((prev) => {
+      const next = new Map(prev);
+      next.delete(index);
+      return next;
+    });
+    setGuardianResolutionError((prev) => {
+      const next = new Map(prev);
+      next.delete(index);
+      return next;
+    });
+  }
+
+  async function resolveGuardianAddress(index: number, address: string) {
+    if (!isFederatedAddress(address)) {
+      setResolvedGuardians((prev) => {
+        const next = new Map(prev);
+        next.delete(index);
+        return next;
+      });
+      setGuardianResolutionError((prev) => {
+        const next = new Map(prev);
+        next.delete(index);
+        return next;
+      });
+      return;
+    }
+
+    setResolvingGuardianIndex(index);
+    try {
+      const resolved = await resolveFederatedAddress(address);
+      setResolvedGuardians((prev) => new Map(prev).set(index, resolved));
+      setGuardianResolutionError((prev) => {
+        const next = new Map(prev);
+        next.delete(index);
+        return next;
+      });
+    } catch (err) {
+      setGuardianResolutionError(
+        (prev) =>
+          new Map(prev).set(
+            index,
+            err instanceof Error ? err.message : 'Failed to resolve address',
+          ),
+      );
+      setResolvedGuardians((prev) => {
+        const next = new Map(prev);
+        next.delete(index);
+        return next;
+      });
+    } finally {
+      setResolvingGuardianIndex(null);
+    }
   }
 
   function addGuardian() {
@@ -298,26 +357,49 @@ export default function NewWillPage() {
               Any 2 of your guardians can force an early release if you&apos;re incapacitated.
             </p>
             {guardians.map((guardian, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <label htmlFor={`guardian-${index}`} className="sr-only">
-                  Guardian {index + 1} address
-                </label>
-                <input
-                  id={`guardian-${index}`}
-                  type="text"
-                  value={guardian}
-                  onChange={(event) => updateGuardian(index, event.target.value)}
-                  placeholder="Guardian address (G...)"
-                  className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeGuardian(index)}
-                  aria-label={`Remove guardian ${index + 1}`}
-                  className="rounded-lg border border-white/10 px-2 py-2 text-will-light/60 transition hover:border-red-400/40 hover:text-red-400"
-                >
-                  ✕
-                </button>
+              <div key={index} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label htmlFor={`guardian-${index}`} className="sr-only">
+                    Guardian {index + 1} address
+                  </label>
+                  <input
+                    id={`guardian-${index}`}
+                    type="text"
+                    value={guardian}
+                    onChange={(event) => updateGuardian(index, event.target.value)}
+                    placeholder="Guardian address (G...) or federated address (name*domain.com)"
+                    className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                  />
+                  {isFederatedAddress(guardian) && (
+                    <button
+                      type="button"
+                      onClick={() => resolveGuardianAddress(index, guardian)}
+                      disabled={resolvingGuardianIndex === index}
+                      className="whitespace-nowrap rounded-lg border border-white/20 px-3 py-2 text-xs font-medium text-will-light/70 transition hover:border-will-purple hover:text-will-light disabled:opacity-40"
+                    >
+                      {resolvingGuardianIndex === index ? 'Resolving…' : 'Resolve'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeGuardian(index)}
+                    aria-label={`Remove guardian ${index + 1}`}
+                    className="rounded-lg border border-white/10 px-2 py-2 text-will-light/60 transition hover:border-red-400/40 hover:text-red-400"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {resolvedGuardians.has(index) && (
+                  <div className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-2">
+                    <p className="text-xs text-emerald-400">Resolved address:</p>
+                    <p className="font-mono text-xs text-emerald-300">{resolvedGuardians.get(index)}</p>
+                  </div>
+                )}
+                {guardianResolutionError.has(index) && (
+                  <div className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2">
+                    <p className="text-xs text-red-400">{guardianResolutionError.get(index)}</p>
+                  </div>
+                )}
               </div>
             ))}
           </fieldset>
