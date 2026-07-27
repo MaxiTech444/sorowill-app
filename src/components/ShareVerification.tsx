@@ -43,6 +43,8 @@ export function ShareVerification() {
           alt="Verification Page QR Code"
           width={180}
           height={180}
+          loading="lazy"
+          decoding="async"
           className="rounded"
         />
       </div>
