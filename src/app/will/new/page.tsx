@@ -13,6 +13,17 @@ const CHECKIN_OPTIONS = [30, 60, 90, 180, 365];
 const GRACE_OPTIONS = [3, 7, 14];
 
 const STEP_LABELS = ['Amount', 'Beneficiaries', 'Timing', 'Guardians', 'Review'];
+const STORAGE_KEY = 'sorowill-form-draft';
+
+interface FormState {
+  step: number;
+  token: string;
+  amount: string;
+  beneficiaries: Beneficiary[];
+  checkinPeriodDays: number;
+  gracePeriodDays: number;
+  guardians: string[];
+}
 
 export default function NewWillPage() {
   const router = useRouter();
@@ -27,9 +38,23 @@ export default function NewWillPage() {
   const [gracePeriodDays, setGracePeriodDays] = useState(7);
   const [guardians, setGuardians] = useState<string[]>([]);
   const [cloneLoading, setCloneLoading] = useState(false);
+  const [resumeAvailable, setResumeAvailable] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const draft = localStorage.getItem(STORAGE_KEY);
+      if (draft && !cloneFromId) {
+        try {
+          setResumeAvailable(true);
+        } catch {
+          setResumeAvailable(false);
+        }
+      }
+    }
+  }, [cloneFromId]);
 
   useEffect(() => {
     if (cloneFromId) {
@@ -50,6 +75,42 @@ export default function NewWillPage() {
         });
     }
   }, [cloneFromId]);
+
+  useEffect(() => {
+    const state: FormState = {
+      step,
+      token,
+      amount,
+      beneficiaries,
+      checkinPeriodDays,
+      gracePeriodDays,
+      guardians,
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+  }, [step, token, amount, beneficiaries, checkinPeriodDays, gracePeriodDays, guardians]);
+
+  function resumeDraft() {
+    if (typeof window !== 'undefined') {
+      const draft = localStorage.getItem(STORAGE_KEY);
+      if (draft) {
+        try {
+          const state: FormState = JSON.parse(draft);
+          setStep(state.step);
+          setToken(state.token);
+          setAmount(state.amount);
+          setBeneficiaries(state.beneficiaries);
+          setCheckinPeriodDays(state.checkinPeriodDays);
+          setGracePeriodDays(state.gracePeriodDays);
+          setGuardians(state.guardians);
+          setResumeAvailable(false);
+        } catch {
+          setError('Failed to resume draft');
+        }
+      }
+    }
+  }
 
   const amountValid = amount.trim() !== '' && Number(amount) > 0 && token.trim() !== '';
   const beneficiariesValid = validateBeneficiaries(beneficiaries) && beneficiaries.every((b) => b.address.trim() !== '');
@@ -83,6 +144,9 @@ export default function NewWillPage() {
         gracePeriodDays,
         guardians: guardians.filter((g) => g.trim() !== ''),
       });
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY);
+      }
       router.push(`/will/${willId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create will');
@@ -107,6 +171,24 @@ export default function NewWillPage() {
           ))}
         </div>
       </div>
+
+      {resumeAvailable && (
+        <div className="rounded-xl border border-will-purple/40 bg-will-purple/10 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-will-light">Draft found</p>
+              <p className="text-xs text-will-light/60">You have an unsaved form in progress</p>
+            </div>
+            <button
+              type="button"
+              onClick={resumeDraft}
+              className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90"
+            >
+              Resume
+            </button>
+          </div>
+        </div>
+      )}
 
       {cloneLoading && (
         <div className="rounded-xl border border-white/10 bg-white/5 p-6">
