@@ -7,9 +7,11 @@ import { calculateShares, formatUSDC, WillStatus, type Will } from '@sorowill/sd
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
+import { useToast } from '@/components/Toast';
 import { StatusBanner } from '@/components/StatusBanner';
 
 export default function InheritPage() {
+  const toast = useToast();
   const params = useParams<{ id: string }>();
   const willId = params.id;
 
@@ -47,8 +49,11 @@ export default function InheritPage() {
       const { txHash } = await getSoroWillClient().releaseInheritance(willId);
       setClaimTxHash(txHash);
       await refetch();
+      toast.success('Inheritance claimed successfully');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to claim inheritance');
+      const message = err instanceof Error ? err.message : 'Failed to claim inheritance';
+      setError(message);
+      toast.error(message);
     } finally {
       setClaiming(false);
     }
@@ -136,7 +141,7 @@ export default function InheritPage() {
           type="button"
           onClick={handleClaim}
           disabled={claiming}
-          className="w-full rounded-full bg-will-purple px-4 py-3 text-sm font-semibold text-white transition hover:bg-will-purple/90 disabled:opacity-60"
+          className="w-full rounded-full bg-will-purple px-4 py-3 text-sm font-semibold text-white transition hover:bg-will-purple/90 disabled:opacity-60 active:scale-95"
         >
           {claiming ? 'Claiming…' : 'Claim Inheritance'}
         </button>

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
 import { WalletConnect } from '@/components/WalletConnect';
 import { NetworkSwitcher } from '@/components/NetworkSwitcher';
+import ClientLayout from './layout-client';
 
 import './globals.css';
 
@@ -46,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

@@ -10,6 +10,32 @@ import { getSoroWillClient, getWillsByGuardian } from '@/lib/sorowill';
 import { WillCard } from '@/components/WillCard';
 
 type Tab = 'owned' | 'inheriting' | 'guardianship';
+import { WillStatus, type Will } from '@sorowill/sdk';
+
+import { safeGetPublicKey } from '@/lib/freighter';
+import { getSoroWillClient } from '@/lib/sorowill';
+import { useToast } from '@/components/Toast';
+import { WillCard } from '@/components/WillCard';
+
+// TODO(#5): Add an activity feed (check-ins, top-ups, guardian votes) once
+// @sorowill/sdk exposes an event subscription/query API — SoroWillClient
+// currently only exposes will reads/writes, no event history.
+
+type Tab = 'owned' | 'inheriting';
+type StatusFilter = 'all' | WillStatus;
+
+const STATUS_FILTERS: StatusFilter[] = ['all', WillStatus.Active, WillStatus.Triggered, WillStatus.Released, WillStatus.Cancelled];
+
+function matchesSearch(will: Will, query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+  if (will.id.toLowerCase().includes(normalized)) {
+    return true;
+  }
+  return will.beneficiaries.some((beneficiary) => beneficiary.address.toLowerCase().includes(normalized));
+}
 
 function CardSkeleton() {
   return (
@@ -24,9 +50,12 @@ function CardSkeleton() {
 }
 
 export default function DashboardPage() {
+  const toast = useToast();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [checkedWallet, setCheckedWallet] = useState(false);
   const [tab, setTab] = useState<Tab>('owned');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [ownedWills, setOwnedWills] = useState<Will[]>([]);
   const [inheritingWills, setInheritingWills] = useState<Will[]>([]);
   const [guardianWills, setGuardianWills] = useState<Will[]>([]);
@@ -83,8 +112,11 @@ export default function DashboardPage() {
       if (publicKey) {
         await loadWills(publicKey);
       }
+      toast.success('Check-in successful');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Check-in failed');
+      const message = err instanceof Error ? err.message : 'Check-in failed';
+      setError(message);
+      toast.error(message);
     } finally {
       setCheckingInId(null);
     }
@@ -210,15 +242,43 @@ export default function DashboardPage() {
             + New Will
           </Link>
         </div>
+  const activeList = (tab === 'owned' ? ownedWills : inheritingWills).filter(
+    (will) => matchesSearch(will, search) && (statusFilter === 'all' || will.status === statusFilter),
+  );
+  const isFiltering = search.trim() !== '' || statusFilter !== 'all';
+
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabName: Tab) => {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      const newTab = tabName === 'owned' ? 'inheriting' : 'owned';
+      setTab(newTab);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <h1 className="text-2xl font-bold text-will-light">Dashboard</h1>
+        <Link
+          href="/will/new"
+          className="w-full rounded-full bg-will-purple px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-will-purple/90 sm:w-auto"
+        >
+          + New Will
+        </Link>
       </div>
 
-      <div className="flex gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+      <div className="flex gap-1 rounded-full border border-white/10 bg-white/5 p-1" role="tablist">
         <button
           type="button"
           onClick={() => {
             setTab('owned');
             setIsMultiSelectMode(false);
           }}
+          onClick={() => setTab('owned')}
+          onKeyDown={(e) => handleTabKeyDown(e, 'owned')}
+          role="tab"
+          aria-selected={tab === 'owned'}
+          aria-controls="owned-panel"
           className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
             tab === 'owned' ? 'bg-will-purple text-white' : 'text-will-light/60 hover:text-will-light'
           }`}
@@ -231,6 +291,11 @@ export default function DashboardPage() {
             setTab('inheriting');
             setIsMultiSelectMode(false);
           }}
+          onClick={() => setTab('inheriting')}
+          onKeyDown={(e) => handleTabKeyDown(e, 'inheriting')}
+          role="tab"
+          aria-selected={tab === 'inheriting'}
+          aria-controls="inheriting-panel"
           className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
             tab === 'inheriting' ? 'bg-will-purple text-white' : 'text-will-light/60 hover:text-will-light'
           }`}
@@ -251,7 +316,29 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search by will ID or beneficiary address"
+          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+        />
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+          className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
+        >
+          {STATUS_FILTERS.map((status) => (
+            <option key={status} value={status} className="bg-will-dark">
+              {status === 'all' ? 'All statuses' : status}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="text-sm text-red-400" role="alert">{error}</p> : null}
 
       {/* Batch Top-up Form Panel */}
       {tab === 'owned' && isMultiSelectMode && selectedWillIds.length > 0 && (
@@ -332,6 +419,8 @@ export default function DashboardPage() {
       )}
 
       {loading ? (
+      <div id={tab === 'owned' ? 'owned-panel' : 'inheriting-panel'} role="tabpanel">
+        {loading ? (
         <div className="space-y-3">
           <CardSkeleton />
           <CardSkeleton />
@@ -343,6 +432,31 @@ export default function DashboardPage() {
             : tab === 'inheriting'
               ? "No one has named you as a beneficiary yet."
               : "You are not designated as a guardian for any wills."}
+          {isFiltering
+            ? 'No wills match your search or filter.'
+            : tab === 'owned'
+              ? "You haven't created any wills yet."
+              : "No one has named you as a beneficiary yet."}
+        <div className="rounded-xl border border-dashed border-white/20 bg-white/5 p-8 text-center">
+          <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
+            <span className="text-lg">{tab === 'owned' ? '📝' : '👥'}</span>
+          </div>
+          <h3 className="font-semibold text-will-light">
+            {tab === 'owned' ? 'No wills yet' : 'Not a beneficiary yet'}
+          </h3>
+          <p className="mt-1 text-sm text-will-light/60">
+            {tab === 'owned'
+              ? "You haven't created any wills. Start protecting your crypto legacy today."
+              : "No one has named you as a beneficiary yet."}
+          </p>
+          {tab === 'owned' && (
+            <Link
+              href="/will/new"
+              className="mt-4 inline-block rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90"
+            >
+              Create your first will
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -367,6 +481,7 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
