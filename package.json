@@ -13,8 +13,6 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts"
-    "test": "tsx src/lib/reminders.test.ts",
-    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@sorowill/sdk": "^0.1.0",
@@ -42,9 +40,8 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.1"
-    "tsx": "^4.23.1",
-    "typescript": "^5.9.3"
+    "vitest": "^3.2.1",
+    "tsx": "^4.23.1"
   },
   "engines": {
     "node": ">=18"
