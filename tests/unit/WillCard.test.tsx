@@ -11,7 +11,7 @@ vi.mock('next/link', () => ({
 
 vi.mock('@sorowill/sdk', () => ({
   WillStatus: { Active: 'Active', Triggered: 'Triggered', Released: 'Released', Cancelled: 'Cancelled' },
-  formatUSDC: (amount: bigint) => (Number(amount) / 1_000_000).toFixed(2),
+  formatUSDC: (amount: bigint | string) => (Number(amount) / 1_000_000).toFixed(2),
   getTimeUntilCheckin: () => 86_400 * 5,
 }));
 
@@ -23,16 +23,17 @@ vi.mock('@/components/StatusBanner', () => ({
   ),
 }));
 
-function makeWill(overrides: Partial<Will> = {}): Will {
+function makeWill(overrides: Record<string, unknown> = {}): Will {
   return {
     id: '1',
     owner: 'GABC...XYZ',
     status: WillStatus.Active,
-    balance: 1000000000n,
+    balance: '1000000000',
     token: 'CUSDC...',
     checkinPeriodDays: 90,
-    lastCheckin: Date.now() / 1000 - 86_400 * 30,
+    lastCheckin: new Date(Date.now() - 86_400_000 * 30),
     gracePeriodDays: 7,
+    triggerTime: null,
     beneficiaries: [],
     guardians: [],
     guardianVotes: 0,
@@ -42,7 +43,7 @@ function makeWill(overrides: Partial<Will> = {}): Will {
 
 describe('WillCard', () => {
   it('renders will ID and balance', () => {
-    render(<WillCard will={makeWill({ id: '42', balance: 500000000n })} />);
+    render(<WillCard will={makeWill({ id: '42', balance: '500000000' })} />);
     expect(screen.getByText('Will #42')).toBeInTheDocument();
     expect(screen.getByText('500.00 USDC locked')).toBeInTheDocument();
   });

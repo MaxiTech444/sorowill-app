@@ -13,7 +13,7 @@ function equalSplit(count: number): number[] {
   }
   const base = Math.floor(100 / count);
   const remainder = 100 - base * count;
-  return Array.from({ length: count }, (_, index) => base + (index < remainder ? 1 : 0));
+  return Array.from({ length: count }, (_, index) => base + (index >= count - remainder ? 1 : 0));
 }
 
 export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 import { WalletConnect } from '@/components/WalletConnect';
 import { NetworkSwitcher } from '@/components/NetworkSwitcher';

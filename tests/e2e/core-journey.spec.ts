@@ -68,8 +68,8 @@ test.describe('Will creation wizard', () => {
   test('shows step 1 with amount inputs', async ({ page }) => {
     await page.goto('/will/new');
     await expect(page.getByText('Step 1 of 5: Amount')).toBeVisible();
-    await expect(page.getByPlaceholderText(/USDC Stellar Asset Contract/)).toBeVisible();
-    await expect(page.getByPlaceholderText('1000.00')).toBeVisible();
+    await expect(page.getByPlaceholder(/USDC Stellar Asset Contract/)).toBeVisible();
+    await expect(page.getByPlaceholder('1000.00')).toBeVisible();
   });
 
   test('Next button is disabled without valid amount', async ({ page }) => {
@@ -79,8 +79,8 @@ test.describe('Will creation wizard', () => {
 
   test('Next button enables with valid amount', async ({ page }) => {
     await page.goto('/will/new');
-    await page.getByPlaceholderText(/USDC Stellar Asset Contract/).fill('CASG...CONTRACT');
-    await page.getByPlaceholderText('1000.00').fill('500');
+    await page.getByPlaceholder(/USDC Stellar Asset Contract/).fill('CASG...CONTRACT');
+    await page.getByPlaceholder('1000.00').fill('500');
     await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 
@@ -88,8 +88,8 @@ test.describe('Will creation wizard', () => {
     await page.goto('/will/new');
 
     // Step 1: Amount
-    await page.getByPlaceholderText(/USDC Stellar Asset Contract/).fill('CASG');
-    await page.getByPlaceholderText('1000.00').fill('100');
+    await page.getByPlaceholder(/USDC Stellar Asset Contract/).fill('CASG');
+    await page.getByPlaceholder('1000.00').fill('100');
     await page.getByRole('button', { name: 'Next' }).click();
 
     // Step 2: Beneficiaries
@@ -115,8 +115,8 @@ test.describe('Will creation wizard', () => {
 
   test('Back button navigates to previous step', async ({ page }) => {
     await page.goto('/will/new');
-    await page.getByPlaceholderText(/USDC Stellar Asset Contract/).fill('CASG');
-    await page.getByPlaceholderText('1000.00').fill('100');
+    await page.getByPlaceholder(/USDC Stellar Asset Contract/).fill('CASG');
+    await page.getByPlaceholder('1000.00').fill('100');
     await page.getByRole('button', { name: 'Next' }).click();
     await expect(page.getByText('Step 2 of 5: Beneficiaries')).toBeVisible();
 
