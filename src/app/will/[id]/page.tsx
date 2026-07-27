@@ -15,6 +15,7 @@ import {
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
+import { useToast } from '@/components/Toast';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { GuardianPanel } from '@/components/GuardianPanel';
@@ -38,6 +39,7 @@ function graceDeadline(will: Will): Date | null {
 }
 
 export default function WillDetailPage() {
+  const toast = useToast();
   const params = useParams<{ id: string }>();
   const willId = params.id;
 
@@ -88,8 +90,12 @@ export default function WillDetailPage() {
       const { txHash } = await fn();
       recordActivity(name, txHash);
       await refetch();
+      const actionLabel = name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      toast.success(`${actionLabel} successful`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : `${name} failed`);
+      const message = err instanceof Error ? err.message : `${name} failed`;
+      setError(message);
+      toast.error(message);
     } finally {
       setBusyAction(null);
     }
@@ -294,31 +300,38 @@ export default function WillDetailPage() {
       ) : null}
 
       {showTopUp ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <label className="text-sm font-medium text-will-light">Top up amount (USDC)</label>
+        <form
+          className="rounded-xl border border-white/10 bg-white/5 p-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            await runAction('top_up', () => client.topUp(will.id, toStroops(topUpAmount).toString()));
+            setTopUpAmount('');
+            setShowTopUp(false);
+          }}
+        >
+          <label htmlFor="topup-amount" className="text-sm font-medium text-will-light">
+            Top up amount (USDC)
+          </label>
           <div className="mt-2 flex gap-2">
             <input
+              id="topup-amount"
               type="number"
               min={0}
               step="0.01"
               value={topUpAmount}
               onChange={(event) => setTopUpAmount(event.target.value)}
               className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
+              aria-label="Top up amount in USDC"
             />
             <button
-              type="button"
-              onClick={async () => {
-                await runAction('top_up', () => client.topUp(will.id, toStroops(topUpAmount).toString()));
-                setTopUpAmount('');
-                setShowTopUp(false);
-              }}
+              type="submit"
               disabled={busyAction !== null || !topUpAmount}
               className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               Confirm
             </button>
           </div>
-        </div>
+        </form>
       ) : null}
 
       {showEditBeneficiaries ? (
@@ -367,7 +380,10 @@ export default function WillDetailPage() {
       <div className="rounded-xl border border-white/10 bg-white/5 p-4">
         <h2 className="text-sm font-semibold text-will-light">Recent activity</h2>
         {activity.length === 0 ? (
-          <p className="mt-2 text-sm text-will-light/50">No actions taken yet this session.</p>
+          <div className="mt-2 flex items-center gap-2 text-sm text-will-light/60">
+            <span>📋</span>
+            <p>No actions taken yet this session.</p>
+          </div>
         ) : (
           <ul className="mt-2 space-y-2">
             {activity.map((entry) => (

@@ -88,18 +88,25 @@ export default function NewWillPage() {
         {step === 0 ? (
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-will-light">Token contract address</label>
+              <label htmlFor="token-address" className="text-sm font-medium text-will-light">
+                Token contract address
+              </label>
               <input
+                id="token-address"
                 type="text"
                 value={token}
                 onChange={(event) => setToken(event.target.value)}
                 placeholder="USDC Stellar Asset Contract (C...)"
                 className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                aria-describedby="token-help"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-will-light">Amount (USDC)</label>
+              <label htmlFor="amount" className="text-sm font-medium text-will-light">
+                Amount (USDC)
+              </label>
               <input
+                id="amount"
                 type="number"
                 min={0}
                 step="0.01"
@@ -107,6 +114,7 @@ export default function NewWillPage() {
                 onChange={(event) => setAmount(event.target.value)}
                 placeholder="1000.00"
                 className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                aria-describedby="amount-help"
               />
             </div>
           </div>
@@ -115,15 +123,16 @@ export default function NewWillPage() {
         {step === 1 ? <BeneficiaryForm value={beneficiaries} onChange={setBeneficiaries} /> : null}
 
         {step === 2 ? (
-          <div className="space-y-6">
+          <fieldset className="space-y-6">
             <div>
-              <label className="text-sm font-medium text-will-light">Check-in period</label>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <legend className="text-sm font-medium text-will-light">Check-in period</legend>
+              <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Check-in period options">
                 {CHECKIN_OPTIONS.map((days) => (
                   <button
                     key={days}
                     type="button"
                     onClick={() => setCheckinPeriodDays(days)}
+                    aria-pressed={checkinPeriodDays === days}
                     className={`rounded-full px-4 py-1.5 text-sm transition ${
                       checkinPeriodDays === days
                         ? 'bg-will-purple text-white'
@@ -136,13 +145,14 @@ export default function NewWillPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-will-light">Grace period</label>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <legend className="text-sm font-medium text-will-light">Grace period</legend>
+              <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Grace period options">
                 {GRACE_OPTIONS.map((days) => (
                   <button
                     key={days}
                     type="button"
                     onClick={() => setGracePeriodDays(days)}
+                    aria-pressed={gracePeriodDays === days}
                     className={`rounded-full px-4 py-1.5 text-sm transition ${
                       gracePeriodDays === days
                         ? 'bg-will-purple text-white'
@@ -154,17 +164,18 @@ export default function NewWillPage() {
                 ))}
               </div>
             </div>
-          </div>
+          </fieldset>
         ) : null}
 
         {step === 3 ? (
-          <div className="space-y-3">
+          <fieldset className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-will-light">Guardians (optional, up to 3)</label>
+              <legend className="text-sm font-medium text-will-light">Guardians (optional, up to 3)</legend>
               <button
                 type="button"
                 onClick={addGuardian}
                 disabled={guardians.length >= 3}
+                aria-label={`Add guardian (${guardians.length} of 3)`}
                 className="text-xs font-medium text-will-purple hover:underline disabled:opacity-40"
               >
                 + Add guardian
@@ -175,7 +186,11 @@ export default function NewWillPage() {
             </p>
             {guardians.map((guardian, index) => (
               <div key={index} className="flex items-center gap-2">
+                <label htmlFor={`guardian-${index}`} className="sr-only">
+                  Guardian {index + 1} address
+                </label>
                 <input
+                  id={`guardian-${index}`}
                   type="text"
                   value={guardian}
                   onChange={(event) => updateGuardian(index, event.target.value)}
@@ -185,14 +200,14 @@ export default function NewWillPage() {
                 <button
                   type="button"
                   onClick={() => removeGuardian(index)}
-                  aria-label="Remove guardian"
+                  aria-label={`Remove guardian ${index + 1}`}
                   className="rounded-lg border border-white/10 px-2 py-2 text-will-light/60 transition hover:border-red-400/40 hover:text-red-400"
                 >
                   ✕
                 </button>
               </div>
             ))}
-          </div>
+          </fieldset>
         ) : null}
 
         {step === 4 ? (
