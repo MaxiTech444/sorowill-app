@@ -1,15 +1,9 @@
 import { formatDeadline, WillStatus } from '@sorowill/sdk';
 
+import { truncateAddress } from '@/lib/freighter';
 import { getContractId, getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { StatusBanner } from '@/components/StatusBanner';
 import { ShareVerification } from '@/components/ShareVerification';
-
-function truncate(address: string): string {
-  if (address.length <= 12) {
-    return address;
-  }
-  return `${address.slice(0, 4)}...${address.slice(-4)}`;
-}
 
 export default async function VerifyPage({ params }: { params: { id: string } }) {
   const will = await getSoroWillClient().getWill(params.id);
@@ -32,7 +26,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
         <ul className="mt-2 space-y-1.5">
           {will.beneficiaries.map((beneficiary) => (
             <li key={beneficiary.address} className="flex justify-between text-sm">
-              <span className="font-mono text-will-light/80">{truncate(beneficiary.address)}</span>
+              <span className="font-mono text-will-light/80">{truncateAddress(beneficiary.address)}</span>
               <span className="text-will-light">{beneficiary.percentage}%</span>
             </li>
           ))}
