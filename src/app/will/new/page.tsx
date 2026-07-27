@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '@sorowill/sdk';
 
-import { truncateAddress } from '@/lib/freighter';
+import { truncateAddress, safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
+import { getUserBalance } from '@/lib/balance';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 
 const CHECKIN_OPTIONS = [30, 60, 90, 180, 365];
@@ -47,6 +48,9 @@ export default function NewWillPage() {
     new Map(),
   );
 
+  const [walletBalance, setWalletBalance] = useState<string | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +66,25 @@ export default function NewWillPage() {
       }
     }
   }, [cloneFromId]);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        setLoadingBalance(true);
+        const publicKey = await safeGetPublicKey();
+        if (publicKey) {
+          const balance = await getUserBalance(publicKey);
+          setWalletBalance(balance);
+        }
+      } catch {
+        setWalletBalance(null);
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+
+    fetchBalance();
+  }, []);
 
   useEffect(() => {
     if (cloneFromId) {
@@ -116,6 +139,12 @@ export default function NewWillPage() {
           setError('Failed to resume draft');
         }
       }
+    }
+  }
+
+  function setMaxAmount() {
+    if (walletBalance) {
+      setAmount(walletBalance);
     }
   }
 
@@ -274,20 +303,38 @@ export default function NewWillPage() {
               />
             </div>
             <div>
-              <label htmlFor="amount" className="text-sm font-medium text-will-light">
-                Amount (USDC)
-              </label>
-              <input
-                id="amount"
-                type="number"
-                min={0}
-                step="0.01"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder="1000.00"
-                className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
-                aria-describedby="amount-help"
-              />
+              <div className="flex items-center justify-between">
+                <label htmlFor="amount" className="text-sm font-medium text-will-light">
+                  Amount (USDC)
+                </label>
+                {walletBalance && (
+                  <div className="text-xs text-will-light/60">
+                    Balance: {loadingBalance ? '...' : walletBalance}
+                  </div>
+                )}
+              </div>
+              <div className="relative mt-1 flex items-center">
+                <input
+                  id="amount"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  placeholder="1000.00"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                  aria-describedby="amount-help"
+                />
+                {walletBalance && (
+                  <button
+                    type="button"
+                    onClick={setMaxAmount}
+                    className="absolute right-2 rounded px-2 py-1 text-xs font-medium text-will-purple hover:bg-white/5"
+                  >
+                    Max
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ) : null}
