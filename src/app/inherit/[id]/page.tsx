@@ -10,6 +10,10 @@ import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { useToast } from '@/components/Toast';
 import { StatusBanner } from '@/components/StatusBanner';
 
+function isValidWillId(id: string): boolean {
+  return /^\d+$/.test(id);
+}
+
 export default function InheritPage() {
   const toast = useToast();
   const params = useParams<{ id: string }>();
@@ -41,6 +45,18 @@ export default function InheritPage() {
   useEffect(() => {
     refetch();
   }, [refetch]);
+
+  // Quick client-side validation before hitting the RPC layer
+  if (!isValidWillId(willId)) {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-8 text-center">
+        <h1 className="text-lg font-semibold text-red-300">Invalid will ID</h1>
+        <p className="mt-2 text-sm text-red-300/70">
+          &ldquo;{willId}&rdquo; is not a valid will identifier. Will IDs must be non-negative integers.
+        </p>
+      </div>
+    );
+  }
 
   async function handleClaim() {
     setClaiming(true);
