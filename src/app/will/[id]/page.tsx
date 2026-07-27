@@ -122,7 +122,6 @@ export default function WillDetailPage() {
     }
   }
 
-  async function runAction(name: string, fn: () => Promise<{ txHash: string }>) {
   async function runAction(
     name: string,
     fn: () => Promise<{ txHash: string }>,
@@ -468,7 +467,7 @@ export default function WillDetailPage() {
               );
               setShowEditBeneficiaries(false);
             }}
-            disabled={busyAction !== null || !validateBeneficiaries(draftBeneficiaries)}
+            disabled={busyAction !== null || !validateBeneficiaries(draftBeneficiaries) || !draftBeneficiaries.every((b) => b.address.trim() !== '')}
             className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             Save Beneficiaries
