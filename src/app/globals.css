@@ -3,11 +3,27 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
+  --bg-primary: #1e1b4b;
+  --bg-secondary: #312e81;
+  --text-primary: #eef2ff;
+  --text-secondary: #c7d2fe;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme='light'] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --border-color: rgba(0, 0, 0, 0.1);
 }
 
 body {
   @apply bg-will-dark text-will-light;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 @keyframes skeleton-pulse {
