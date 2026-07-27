@@ -30,6 +30,10 @@ SoroWill is a trustless, on-chain inheritance protocol on Stellar Soroban. This 
 ```bash
 git clone https://github.com/SoroWill/sorowill-app.git
 cd sorowill-app
+# The .nvmrc file pins Node 20 (matching CI). If you use nvm/fnm/volta, run:
+#   nvm use       (nvm)
+#   fnm use        (fnm)
+#   volta install  (volta)
 npm install
 cp .env.example .env.local
 # fill in NEXT_PUBLIC_CONTRACT_ID with your deployed SoroWill contract address
