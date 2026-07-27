@@ -2,6 +2,7 @@ import { formatDeadline, WillStatus } from '@sorowill/sdk';
 
 import { getContractId, getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { StatusBanner } from '@/components/StatusBanner';
+import { ShareVerification } from '@/components/ShareVerification';
 
 function truncate(address: string): string {
   if (address.length <= 12) {
@@ -45,6 +46,8 @@ export default async function VerifyPage({ params }: { params: { id: string } })
         </div>
       ) : null}
 
+      <ShareVerification />
+
       <a
         href={stellarExpertUrl('contract', getContractId())}
         target="_blank"
@@ -56,3 +59,4 @@ export default async function VerifyPage({ params }: { params: { id: string } })
     </div>
   );
 }
+
