@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { safeConnectWallet, safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 
@@ -40,11 +40,24 @@ export function WalletConnect() {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (isSessionCleared()) {
       return;
     }
-    safeGetPublicKey().then(setPublicKey);
+    safeGetPublicKey().then((key) => {
+      if (isMounted.current) {
+        setPublicKey(key);
+      }
+    });
   }, []);
 
   async function handleConnect() {

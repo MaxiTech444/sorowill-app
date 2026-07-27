@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
 import { type Will, formatUSDC, toStroops } from '@sorowill/sdk';
@@ -72,6 +72,15 @@ export default function DashboardPage() {
     Record<string, { status: 'success' | 'error'; message: string; txHash?: string }>
   >({});
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const loadWills = useCallback(async (owner: string) => {
     setLoading(true);
     setError(null);
@@ -82,18 +91,29 @@ export default function DashboardPage() {
         client.getWillsByBeneficiary(owner),
         getWillsByGuardian(owner),
       ]);
+      if (!isMounted.current) {
+        return;
+      }
       setOwnedWills(owned);
       setInheritingWills(inheriting);
       setGuardianWills(guardian);
     } catch (err) {
+      if (!isMounted.current) {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to load wills');
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     safeGetPublicKey().then((key) => {
+      if (!isMounted.current) {
+        return;
+      }
       setPublicKey(key);
       setCheckedWallet(true);
     });
