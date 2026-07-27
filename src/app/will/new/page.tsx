@@ -14,6 +14,10 @@ const GRACE_OPTIONS = [3, 7, 14];
 
 const STEP_LABELS = ['Amount', 'Beneficiaries', 'Timing', 'Guardians', 'Review'];
 
+// Soroban contract strkey: 'C' followed by 55 base32 chars (RFC 4648 alphabet,
+// no padding). Catches typos here rather than deep in the SDK at submit time.
+const CONTRACT_ADDRESS_PATTERN = /^C[A-Z2-7]{55}$/;
+
 export default function NewWillPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,7 +55,9 @@ export default function NewWillPage() {
     }
   }, [cloneFromId]);
 
-  const amountValid = amount.trim() !== '' && Number(amount) > 0 && token.trim() !== '';
+  const tokenValid = CONTRACT_ADDRESS_PATTERN.test(token.trim());
+  const showTokenError = token.trim() !== '' && !tokenValid;
+  const amountValid = amount.trim() !== '' && Number(amount) > 0 && tokenValid;
   const beneficiariesValid = validateBeneficiaries(beneficiaries) && beneficiaries.every((b) => b.address.trim() !== '');
 
   const canGoNext = [amountValid, beneficiariesValid, true, true, true][step];
@@ -129,8 +135,15 @@ export default function NewWillPage() {
                 onChange={(event) => setToken(event.target.value)}
                 placeholder="USDC Stellar Asset Contract (C...)"
                 className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
-                aria-describedby="token-help"
+                aria-describedby="token-help token-error"
+                aria-invalid={showTokenError}
               />
+              {showTokenError ? (
+                <p id="token-error" role="alert" className="mt-1 text-xs text-red-400">
+                  That doesn&apos;t look like a Stellar contract address. It should start with
+                  &quot;C&quot; and be 56 characters long.
+                </p>
+              ) : null}
             </div>
             <div>
               <label htmlFor="amount" className="text-sm font-medium text-will-light">
