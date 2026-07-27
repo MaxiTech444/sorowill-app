@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useParams } from 'next/navigation';
 
 import {
@@ -73,6 +73,7 @@ export default function WillDetailPage() {
   const [topUpAmount, setTopUpAmount] = useState('');
   const [showEditBeneficiaries, setShowEditBeneficiaries] = useState(false);
   const [draftBeneficiaries, setDraftBeneficiaries] = useState<Beneficiary[]>([]);
+  const showEditBeneficiariesRef = useRef(false);
   const [showEarlyRelease, setShowEarlyRelease] = useState(false);
   const [earlyReleaseAmount, setEarlyReleaseAmount] = useState('');
   const [earlyReleaseRecipient, setEarlyReleaseRecipient] = useState('');
@@ -84,7 +85,11 @@ export default function WillDetailPage() {
     try {
       const fetched = await getSoroWillClient().getWill(willId);
       setWill(fetched);
-      setDraftBeneficiaries(fetched.beneficiaries);
+      // Only reset draft beneficiaries when the edit panel is not open,
+      // otherwise in-progress edits would be silently overwritten.
+      if (!showEditBeneficiariesRef.current) {
+        setDraftBeneficiaries(fetched.beneficiaries);
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load will');
@@ -122,7 +127,6 @@ export default function WillDetailPage() {
     }
   }
 
-  async function runAction(name: string, fn: () => Promise<{ txHash: string }>) {
   async function runAction(
     name: string,
     fn: () => Promise<{ txHash: string }>,
@@ -318,7 +322,13 @@ export default function WillDetailPage() {
             </button>
             <button
               type="button"
-              onClick={() => setShowEditBeneficiaries((s) => !s)}
+              onClick={() => {
+                setShowEditBeneficiaries((s) => {
+                  const next = !s;
+                  showEditBeneficiariesRef.current = next;
+                  return next;
+                });
+              }}
               className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
             >
               Update Beneficiaries
