@@ -40,3 +40,68 @@ body {
   animation: skeleton-pulse 1.5s ease-in-out infinite;
   @apply rounded-md bg-white/10;
 }
+
+@media print {
+  body {
+    background-color: #ffffff;
+    color: #000000;
+  }
+
+  header,
+  nav,
+  [class*='ThemeToggle'],
+  [class*='NetworkSwitcher'],
+  [class*='WalletConnect'],
+  [class*='status-banner'],
+  button:not([class*='print-visible']),
+  form,
+  .print-hide {
+    display: none;
+  }
+
+  a {
+    color: #0066cc;
+  }
+
+  .print-section {
+    page-break-inside: avoid;
+    margin-bottom: 1.5rem;
+  }
+
+  .print-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    color: #000000;
+  }
+
+  .print-heading {
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #000000;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #cccccc;
+    padding: 0.75rem;
+    text-align: left;
+  }
+
+  .print-table th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+  }
+
+  .print-text {
+    color: #000000;
+  }
+}

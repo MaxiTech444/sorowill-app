@@ -50,34 +50,37 @@ describe('WillCard', () => {
 
   it('shows check-in button when onCheckIn is provided and will is active', () => {
     render(<WillCard will={makeWill()} onCheckIn={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Check In' })).toBeInTheDocument();
+    // The button uses aria-label="Check in for will {id}"
+    expect(screen.getByRole('button', { name: /check in for will/i })).toBeInTheDocument();
   });
 
   it('hides check-in button when onCheckIn is not provided', () => {
     render(<WillCard will={makeWill()} />);
-    expect(screen.queryByRole('button', { name: 'Check In' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /check in for will/i })).not.toBeInTheDocument();
   });
 
   it('hides check-in button when will is not active', () => {
     render(<WillCard will={makeWill({ status: WillStatus.Released })} onCheckIn={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: 'Check In' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /check in for will/i })).not.toBeInTheDocument();
   });
 
   it('calls onCheckIn with will id when clicked', () => {
     const onCheckIn = vi.fn();
     render(<WillCard will={makeWill({ id: '7' })} onCheckIn={onCheckIn} />);
-    screen.getByRole('button', { name: 'Check In' }).click();
+    screen.getByRole('button', { name: /check in for will 7/i }).click();
     expect(onCheckIn).toHaveBeenCalledWith('7');
   });
 
   it('shows checking in state when checkingIn is true', () => {
     render(<WillCard will={makeWill()} onCheckIn={vi.fn()} checkingIn />);
-    expect(screen.getByRole('button', { name: /checking in/i })).toBeDisabled();
+    // When checking in, the button is disabled
+    expect(screen.getByRole('button', { name: /check in for will/i })).toBeDisabled();
   });
 
   it('always shows details link', () => {
     render(<WillCard will={makeWill({ id: '5' })} />);
-    expect(screen.getByRole('link', { name: 'Details' })).toHaveAttribute('href', '/will/5');
+    // The link uses aria-label="View details for will {id}"
+    expect(screen.getByRole('link', { name: /view details for will 5/i })).toHaveAttribute('href', '/will/5');
   });
 
   it('shows overdue text when check-in is overdue', () => {
