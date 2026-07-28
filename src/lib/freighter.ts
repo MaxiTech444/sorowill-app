@@ -47,6 +47,37 @@ export async function safeGetPublicKey(): Promise<string | null> {
   }
 }
 
+/**
+ * SSR-safe wrapper around the Freighter API's `getNetwork`. Resolves
+ * with the wallet's currently selected network and passphrase, or null
+ * if Freighter is not installed, not connected, or called during SSR.
+ */
+export async function safeGetWalletNetwork(): Promise<{
+  network: string;
+  networkPassphrase: string;
+} | null> {
+  if (!isBrowser) {
+    return null;
+  }
+  try {
+    // Dynamic import: @stellar/freighter-api is a transitive dep of @sorowill/sdk
+    const { isConnected, getNetwork: getFreighterNetwork } = await import(
+      '@stellar/freighter-api'
+    );
+    const connected = await isConnected();
+    if (!connected.isConnected) {
+      return null;
+    }
+    const net = await getFreighterNetwork();
+    if (net.error) {
+      return null;
+    }
+    return { network: net.network, networkPassphrase: net.networkPassphrase };
+  } catch {
+    return null;
+  }
+}
+
 /** Truncates a Stellar address for display, e.g. `GABC...WXYZ`. */
 export function truncateAddress(address: string): string {
   if (address.length <= 12) {
