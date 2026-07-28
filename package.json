@@ -39,9 +39,11 @@
     "playwright": "^1.52.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.1",
     "tsx": "^4.23.1"
+    "vitest": "^3.2.1"
   },
   "engines": {
     "node": ">=18"
