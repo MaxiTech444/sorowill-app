@@ -197,7 +197,7 @@ export default function WillDetailPage() {
       const actionLabel = name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       toast.success(`${actionLabel} successful`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : `${name} failed`;
+      const message = errorMessage ? errorMessage(err) : (err instanceof Error ? err.message : `${name} failed`);
       setError(message);
       toast.error(message);
     } finally {
@@ -351,24 +351,24 @@ export default function WillDetailPage() {
           </button>
         ) : null}
 
-        {!isOwner || will.status === WillStatus.Active ? (
-          checkinOverdue ? (
+        {!isOwner && checkinOverdue ? (
             <button
               type="button"
               onClick={() => runAction('trigger_will', () => client.triggerWill(will.id))}
-              disabled={busyAction !== null}
+              disabled={busyAction !== null || !publicKey}
+              title={!publicKey ? 'Connect your wallet first' : undefined}
               className="w-full rounded-full bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-500/90 disabled:opacity-60 sm:w-auto"
             >
               {busyAction === 'trigger_will' ? 'Triggering…' : 'Trigger Will'}
             </button>
-          ) : null
-        ) : null}
+          ) : null}
 
         {graceExpired ? (
           <button
             type="button"
             onClick={() => runAction('release_inheritance', () => client.releaseInheritance(will.id))}
-            disabled={busyAction !== null}
+            disabled={busyAction !== null || !publicKey}
+            title={!publicKey ? 'Connect your wallet first' : undefined}
             className="w-full rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:opacity-60 sm:w-auto"
           >
             {busyAction === 'release_inheritance' ? 'Releasing…' : 'Release Inheritance'}
