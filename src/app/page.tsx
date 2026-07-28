@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Footer } from '@/components/Footer';
 
 const STEPS = [
   {
@@ -55,6 +56,12 @@ export default function LandingPage() {
           >
             Create your Will
           </Link>
+          <Link
+            href="/faq"
+            className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-will-light/80 transition hover:border-white/40 hover:text-will-light"
+          >
+            Learn More
+          </Link>
           <a
             href="https://github.com/SoroWill/sorowill-contracts"
             target="_blank"
@@ -91,9 +98,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="flex flex-col items-center gap-2 border-t border-white/10 pt-8 text-center text-sm text-will-light/50">
+      <footer className="flex flex-col items-center gap-3 border-t border-white/10 pt-8 text-center text-sm text-will-light/50">
         <p>SoroWill, built on Stellar</p>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <Link href="/faq" className="hover:text-will-light">
+            FAQ
+          </Link>
           <span>MIT License</span>
           <a
             href="https://github.com/SoroWill/sorowill-app"
@@ -105,6 +115,7 @@ export default function LandingPage() {
           </a>
         </div>
       </footer>
+      <Footer />
     </div>
   );
 }
