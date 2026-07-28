@@ -174,6 +174,26 @@ export default function NewWillPage() {
                   </button>
                 ))}
               </div>
+              <div className="mt-3 flex flex-col gap-2">
+                <label htmlFor="custom-checkin" className="text-xs text-will-light/70">
+                  Or enter a custom value (in days):
+                </label>
+                <input
+                  id="custom-checkin"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={checkinPeriodDays}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val > 0) {
+                      setCheckinPeriodDays(val);
+                    }
+                  }}
+                  placeholder="Enter days"
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                />
+              </div>
             </div>
             <div>
               <legend className="text-sm font-medium text-will-light">Grace period</legend>
@@ -193,6 +213,26 @@ export default function NewWillPage() {
                     {days} days
                   </button>
                 ))}
+              </div>
+              <div className="mt-3 flex flex-col gap-2">
+                <label htmlFor="custom-grace" className="text-xs text-will-light/70">
+                  Or enter a custom value (in days):
+                </label>
+                <input
+                  id="custom-grace"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={gracePeriodDays}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val > 0) {
+                      setGracePeriodDays(val);
+                    }
+                  }}
+                  placeholder="Enter days"
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                />
               </div>
             </div>
           </fieldset>
