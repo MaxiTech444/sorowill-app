@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 import { calculateShares, formatUSDC, WillStatus, type Will } from '@sorowill/sdk';
@@ -26,20 +26,41 @@ export default function InheritPage() {
   const [claiming, setClaiming] = useState(false);
   const [claimTxHash, setClaimTxHash] = useState<string | null>(null);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const refetch = useCallback(async () => {
     try {
       const fetched = await getSoroWillClient().getWill(willId);
+      if (!isMounted.current) {
+        return;
+      }
       setWill(fetched);
       setError(null);
     } catch (err) {
+      if (!isMounted.current) {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to load will');
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, [willId]);
 
   useEffect(() => {
-    safeGetPublicKey().then(setPublicKey);
+    safeGetPublicKey().then((key) => {
+      if (isMounted.current) {
+        setPublicKey(key);
+      }
+    });
   }, []);
 
   useEffect(() => {

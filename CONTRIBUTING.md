@@ -24,24 +24,23 @@ fix/N-short-description
 - Test the affected page in a real browser with Freighter installed where the change touches wallet or transaction flows.
 - Keep the dark purple theme (`will-purple`, `will-dark`, `will-light`) consistent with the rest of the app.
 
-## Dependency security
+## Design tokens
 
-CI runs `npm audit --audit-level=high` on every PR and push to `main`. If a high- or critical-severity advisory is flagged:
+The app uses a compact palette of custom color tokens defined in `tailwind.config.ts`. Use these instead of hardcoded hex values so the theme stays consistent across every view:
 
-1. Check the advisory URL in the CI log to understand the vulnerability.
-2. If a compatible fix is available, run `npm audit fix` to apply patches automatically.
-3. If `npm audit fix` cannot resolve the advisory (e.g. the fix requires a semver-major bump), evaluate whether the affected package can be upgraded manually. Document any required code changes in the PR.
-4. If no fix is available or the upgrade is infeasible, file an issue describing the advisory and the reason it cannot be resolved immediately. The team may suppress the advisory temporarily with `npm audit --audit-level=critical` until a fix lands upstream — but this must be approved by a maintainer.
+| Token          | Hex       | Intended usage                                         |
+|----------------|-----------|--------------------------------------------------------|
+| `will-purple`  | `#4F46E5` | Primary action color — buttons, links, active states, progress bars |
+| `will-dark`    | `#1E1B4B` | Page & header backgrounds (the deep purple brand base) |
+| `will-light`   | `#EEF2FF` | Primary text color — headings, body copy, form labels  |
 
-## Storybook
+Opacity modifiers (e.g. `text-will-light/60`) are used for secondary/de-emphasised text; borders and dividers use `border-white/10` or `border-white/20` throughout.
 
-This project uses [Storybook](https://storybook.js.org/) for isolated component development. To run it locally:
+## Environment variables: public-by-design
 
-```bash
-npm run storybook
-```
+All three `NEXT_PUBLIC_*` variables that this app reads (`NEXT_PUBLIC_STELLAR_NETWORK`, `NEXT_PUBLIC_CONTRACT_ID`, `NEXT_PUBLIC_RPC_URL`) are **intentionally public** — they describe the on-chain environment, not a secret. This is correct, because Next.js bundles every `NEXT_PUBLIC_*` variable into the client-side JavaScript sent to the browser.
 
-Stories live alongside their components under `src/components/` and cover meaningful states (default, empty, loading, error, etc.). When adding or modifying a component in `src/components/`, include a corresponding story.
+⚠️ **Never prefix a genuinely sensitive value with `NEXT_PUBLIC_`.** If the app ever needs a server-side secret (an API key, a paid RPC provider auth token, a webhook signing secret, etc.), store it in a plain (non-`NEXT_PUBLIC_`) environment variable and consume it only inside Route Handlers, Server Components, or `getServerSideProps` / server actions. Those values stay on the server and are never exposed to the browser.
 
 ## Local setup
 

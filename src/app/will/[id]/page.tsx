@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useParams } from 'next/navigation';
 
 import {
   calculateShares,
@@ -53,8 +53,17 @@ function getGuardianVoteErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Guardian vote failed';
 }
 
-function isValidWillId(id: string): boolean {
-  return /^\d+$/.test(id);
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export default function WillDetailPage() {
@@ -72,11 +81,14 @@ export default function WillDetailPage() {
   const [castingVoteId, setCastingVoteId] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [exportingCertificate, setExportingCertificate] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('');
   const [showEditBeneficiaries, setShowEditBeneficiaries] = useState(false);
   const [draftBeneficiaries, setDraftBeneficiaries] = useState<Beneficiary[]>([]);
+  const showEditBeneficiariesRef = useRef(false);
   const [showEarlyRelease, setShowEarlyRelease] = useState(false);
   const [earlyReleaseAmount, setEarlyReleaseAmount] = useState('');
   const [earlyReleaseRecipient, setEarlyReleaseRecipient] = useState('');
@@ -84,21 +96,66 @@ export default function WillDetailPage() {
   const [reminderStatus, setReminderStatus] = useState<string | null>(null);
   const [reminderPending, setReminderPending] = useState(false);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const refetch = useCallback(async () => {
+    try {
+      const fetched = await getSoroWillClient().getWill(willId);
+      if (!isMounted.current) {
+        return;
+      }
+      setWill(fetched);
+      setDraftBeneficiaries(fetched.beneficiaries);
+      setLastFetchTime(new Date());
+      // Only reset draft beneficiaries when the edit panel is not open,
+      // otherwise in-progress edits would be silently overwritten.
+      if (!showEditBeneficiariesRef.current) {
+        setDraftBeneficiaries(fetched.beneficiaries);
+      }
+      setError(null);
+    } catch (err) {
+      if (!isMounted.current) {
+        return;
+      }
+      setError(err instanceof Error ? err.message : 'Failed to load will');
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+      }
+    }
+  }, [willId]);
+
+  const handleManualRefresh = useCallback(async () => {
+    setIsRefreshing(true);
     try {
       const fetched = await getSoroWillClient().getWill(willId);
       setWill(fetched);
       setDraftBeneficiaries(fetched.beneficiaries);
+      setLastFetchTime(new Date());
       setError(null);
+      toast.success('Data refreshed');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load will');
+      const message = err instanceof Error ? err.message : 'Failed to refresh data';
+      setError(message);
+      toast.error(message);
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
     }
-  }, [willId]);
+  }, [willId, toast]);
 
   useEffect(() => {
-    safeGetPublicKey().then(setPublicKey);
+    safeGetPublicKey().then((key) => {
+      if (isMounted.current) {
+        setPublicKey(key);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -228,32 +285,58 @@ export default function WillDetailPage() {
   const graceExpired = will.status === WillStatus.Triggered && grace !== null && Date.now() >= grace.getTime();
 
   const shares = calculateShares(will.balance, will.beneficiaries);
+  const beneficiaryMap = new Map(will.beneficiaries.map((b) => [b.address, b.percentage]));
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 print-section">
         <div>
-          <h1 className="text-2xl font-bold text-will-light">Will #{will.id}</h1>
-          <p className="text-sm text-will-light/50">Owner: {truncateAddress(will.owner)}</p>
+          <h1 className="text-2xl font-bold text-will-light print-title">Will #{will.id}</h1>
+          <p className="text-sm text-will-light/50 print-text">
+            Owner:{' '}
+            <a
+              href={stellarExpertUrl('account', will.owner)}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono text-will-purple hover:underline"
+            >
+              {truncateAddress(will.owner)}
+            </a>
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={handleExportCertificate}
-          disabled={exportingCertificate}
-          className="rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {exportingCertificate ? 'Generating…' : 'Export Certificate (PDF)'}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="print-hide rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
+            title="Refresh on-chain data"
+          >
+            {isRefreshing ? 'Refreshing…' : '↻ Refresh'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCertificate}
+            disabled={exportingCertificate}
+            className="print-hide rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {exportingCertificate ? 'Generating…' : 'Export Certificate (PDF)'}
+          </button>
+        </div>
+      </div>
+
+      <div className="print-hide flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-will-light/60">
+        <span>Last updated {formatTimeAgo(lastFetchTime)}</span>
       </div>
 
       <StatusBanner status={will.status} />
 
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="text-sm text-red-400 print-hide">{error}</p> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="print-section grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <span className="text-xs uppercase tracking-wide text-will-light/60">Locked balance</span>
-          <p className="mt-1 text-2xl font-semibold text-will-light">{formatUSDC(BigInt(will.balance))} USDC</p>
+          <span className="text-xs uppercase tracking-wide text-will-light/60 print-text">Locked balance</span>
+          <p className="mt-1 text-2xl font-semibold text-will-light print-text">{formatUSDC(BigInt(will.balance))} USDC</p>
         </div>
 
         {will.status === WillStatus.Active ? (
@@ -267,7 +350,7 @@ export default function WillDetailPage() {
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-wrap sm:flex-row">
+      <div className="print-hide flex flex-col gap-2 sm:flex-wrap sm:flex-row">
         {isOwner && will.status === WillStatus.Active ? (
           <button
             type="button"
@@ -290,24 +373,24 @@ export default function WillDetailPage() {
           </button>
         ) : null}
 
-        {!isOwner || will.status === WillStatus.Active ? (
-          checkinOverdue ? (
+        {!isOwner && checkinOverdue ? (
             <button
               type="button"
               onClick={() => runAction('trigger_will', () => client.triggerWill(will.id))}
-              disabled={busyAction !== null}
+              disabled={busyAction !== null || !publicKey}
+              title={!publicKey ? 'Connect your wallet first' : undefined}
               className="w-full rounded-full bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-500/90 disabled:opacity-60 sm:w-auto"
             >
               {busyAction === 'trigger_will' ? 'Triggering…' : 'Trigger Will'}
             </button>
-          ) : null
-        ) : null}
+          ) : null}
 
         {graceExpired ? (
           <button
             type="button"
             onClick={() => runAction('release_inheritance', () => client.releaseInheritance(will.id))}
-            disabled={busyAction !== null}
+            disabled={busyAction !== null || !publicKey}
+            title={!publicKey ? 'Connect your wallet first' : undefined}
             className="w-full rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:opacity-60 sm:w-auto"
           >
             {busyAction === 'release_inheritance' ? 'Releasing…' : 'Release Inheritance'}
@@ -333,7 +416,13 @@ export default function WillDetailPage() {
             </button>
             <button
               type="button"
-              onClick={() => setShowEditBeneficiaries((s) => !s)}
+              onClick={() => {
+                setShowEditBeneficiaries((s) => {
+                  const next = !s;
+                  showEditBeneficiariesRef.current = next;
+                  return next;
+                });
+              }}
               className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
             >
               Update Beneficiaries
@@ -359,7 +448,7 @@ export default function WillDetailPage() {
       </div>
 
       {isOwner && will.status === WillStatus.Active ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="print-hide rounded-xl border border-white/10 bg-white/5 p-4">
           <h2 className="text-sm font-semibold text-will-light">Check-in reminders</h2>
           <p className="mt-1 text-sm text-will-light/60">
             Receive an email 2+ weeks before the deadline and again when it&apos;s imminent.
@@ -387,7 +476,7 @@ export default function WillDetailPage() {
 
       {showTopUp ? (
         <form
-          className="rounded-xl border border-white/10 bg-white/5 p-4"
+          className="print-hide rounded-xl border border-white/10 bg-white/5 p-4"
           onSubmit={async (e) => {
             e.preventDefault();
             await runAction('top_up', () => client.topUp(will.id, toStroops(topUpAmount).toString()));
@@ -421,7 +510,7 @@ export default function WillDetailPage() {
       ) : null}
 
       {showEarlyRelease ? (
-        <div className="rounded-xl border border-will-purple/40 bg-will-purple/10 p-4">
+        <div className="print-hide rounded-xl border border-will-purple/40 bg-will-purple/10 p-4">
           <h3 className="text-sm font-semibold text-will-light">Release early to beneficiary</h3>
           <div className="mt-3 space-y-3">
             <div>
@@ -473,7 +562,7 @@ export default function WillDetailPage() {
       ) : null}
 
       {showEditBeneficiaries ? (
-        <div className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="print-hide space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
           <BeneficiaryForm value={draftBeneficiaries} onChange={setDraftBeneficiaries} />
           <button
             type="button"
@@ -483,7 +572,7 @@ export default function WillDetailPage() {
               );
               setShowEditBeneficiaries(false);
             }}
-            disabled={busyAction !== null || !validateBeneficiaries(draftBeneficiaries)}
+            disabled={busyAction !== null || !validateBeneficiaries(draftBeneficiaries) || !draftBeneficiaries.every((b) => b.address.trim() !== '')}
             className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             Save Beneficiaries
@@ -491,9 +580,9 @@ export default function WillDetailPage() {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-        <h2 className="text-sm font-semibold text-will-light">Beneficiaries</h2>
-        <table className="mt-3 w-full text-sm">
+      <div className="print-section rounded-xl border border-white/10 bg-white/5 p-4">
+        <h2 className="text-sm font-semibold text-will-light print-heading">Beneficiaries</h2>
+        <table className="mt-3 w-full text-sm print-table">
           <thead>
             <tr className="text-left text-xs uppercase tracking-wide text-will-light/50">
               <th className="pb-2 font-medium">Address</th>
@@ -502,10 +591,19 @@ export default function WillDetailPage() {
             </tr>
           </thead>
           <tbody>
-            {shares.map((row, index) => (
+            {shares.map((row) => (
               <tr key={row.address} className="border-t border-white/5">
-                <td className="py-2 font-mono text-will-light">{truncateAddress(row.address)}</td>
-                <td className="py-2 text-will-light/70">{will.beneficiaries[index]?.percentage}%</td>
+                <td className="py-2 font-mono text-will-light">
+                  <a
+                    href={stellarExpertUrl('account', row.address)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-will-purple hover:underline"
+                  >
+                    {truncateAddress(row.address)}
+                  </a>
+                </td>
+                <td className="py-2 text-will-light/70">{beneficiaryMap.get(row.address)}%</td>
                 <td className="py-2 text-will-light">{formatUSDC(BigInt(row.share))} USDC</td>
               </tr>
             ))}
@@ -513,22 +611,25 @@ export default function WillDetailPage() {
         </table>
       </div>
 
-      <GuardianPanel
-        guardians={will.guardians}
-        guardianVotes={will.guardianVotes}
-        isGuardian={isGuardian}
-        isActive={will.status === WillStatus.Active}
-        isCastingVote={castingVoteId === will.id}
-        onCastVote={() => {
-          setCastingVoteId(will.id);
-          void runAction('cast_guardian_vote', () => client.guardianTrigger(will.id), getGuardianVoteErrorMessage).finally(
-            () => setCastingVoteId(null),
-          );
-        }}
-        error={error}
-      />
+      <div className="print-hide">
+        <GuardianPanel guardians={will.guardians} guardianVotes={will.guardianVotes} isOwner={isOwner} willId={will.id} />
+        <GuardianPanel
+          guardians={will.guardians}
+          guardianVotes={will.guardianVotes}
+          isGuardian={isGuardian}
+          isActive={will.status === WillStatus.Active}
+          isCastingVote={castingVoteId === will.id}
+          onCastVote={() => {
+            setCastingVoteId(will.id);
+            void runAction('cast_guardian_vote', () => client.guardianTrigger(will.id), getGuardianVoteErrorMessage).finally(
+              () => setCastingVoteId(null),
+            );
+          }}
+          error={error}
+        />
+      </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+      <div className="print-hide rounded-xl border border-white/10 bg-white/5 p-4">
         <h2 className="text-sm font-semibold text-will-light">Recent activity</h2>
         {activity.length === 0 ? (
           <div className="mt-2 flex items-center gap-2 text-sm text-will-light/60">

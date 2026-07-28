@@ -6,7 +6,6 @@ const GUARDIAN_THRESHOLD = 2;
 export interface GuardianPanelProps {
   guardians: string[];
   guardianVotes: number;
-  isOwner?: boolean;
   willId?: string;
   isGuardian?: boolean;
   isActive?: boolean;
@@ -18,7 +17,6 @@ export interface GuardianPanelProps {
 export function GuardianPanel({
   guardians,
   guardianVotes,
-  isOwner = false,
   willId,
   isGuardian = false,
   isActive = false,

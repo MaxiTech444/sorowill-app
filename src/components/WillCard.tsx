@@ -17,6 +17,13 @@ export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps)
   const secondsLeft = getTimeUntilCheckin(will);
   const daysLeft = Math.ceil(secondsLeft / 86_400);
 
+  const overdue = secondsLeft <= 0;
+  const colorClass = overdue
+    ? 'text-red-400'
+    : secondsLeft < 3 * 86_400
+      ? 'text-amber-400'
+      : 'text-emerald-400';
+
   return (
     <article
       className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 transition hover:border-will-purple/40 sm:flex-row sm:items-center sm:justify-between"
@@ -31,8 +38,8 @@ export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps)
         </div>
         <p className="text-sm text-will-light/70">{formatUSDC(BigInt(will.balance))} USDC locked</p>
         {will.status === WillStatus.Active ? (
-          <p className="text-xs text-will-light/50" role="status">
-            {secondsLeft > 0 ? `Check-in due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}` : 'Check-in overdue'}
+          <p className={`text-xs ${colorClass}`} role="status">
+            {overdue ? 'Check-in overdue' : `Check-in due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
           </p>
         ) : null}
       </div>
