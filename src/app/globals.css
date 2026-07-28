@@ -3,11 +3,27 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
+  --bg-primary: #1e1b4b;
+  --bg-secondary: #312e81;
+  --text-primary: #eef2ff;
+  --text-secondary: #c7d2fe;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme='light'] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --border-color: rgba(0, 0, 0, 0.1);
 }
 
 body {
   @apply bg-will-dark text-will-light;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 @keyframes skeleton-pulse {
@@ -23,4 +39,69 @@ body {
 .skeleton {
   animation: skeleton-pulse 1.5s ease-in-out infinite;
   @apply rounded-md bg-white/10;
+}
+
+@media print {
+  body {
+    background-color: #ffffff;
+    color: #000000;
+  }
+
+  header,
+  nav,
+  [class*='ThemeToggle'],
+  [class*='NetworkSwitcher'],
+  [class*='WalletConnect'],
+  [class*='status-banner'],
+  button:not([class*='print-visible']),
+  form,
+  .print-hide {
+    display: none;
+  }
+
+  a {
+    color: #0066cc;
+  }
+
+  .print-section {
+    page-break-inside: avoid;
+    margin-bottom: 1.5rem;
+  }
+
+  .print-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    color: #000000;
+  }
+
+  .print-heading {
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #000000;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #cccccc;
+    padding: 0.75rem;
+    text-align: left;
+  }
+
+  .print-table th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+  }
+
+  .print-text {
+    color: #000000;
+  }
 }

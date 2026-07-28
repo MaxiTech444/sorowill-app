@@ -1,15 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 import { calculateShares, formatUSDC, WillStatus, type Will } from '@sorowill/sdk';
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
+import { useToast } from '@/components/Toast';
 import { StatusBanner } from '@/components/StatusBanner';
 
+function isValidWillId(id: string): boolean {
+  return /^\d+$/.test(id);
+}
+
 export default function InheritPage() {
+  const toast = useToast();
   const params = useParams<{ id: string }>();
   const willId = params.id;
 
@@ -20,25 +26,58 @@ export default function InheritPage() {
   const [claiming, setClaiming] = useState(false);
   const [claimTxHash, setClaimTxHash] = useState<string | null>(null);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const refetch = useCallback(async () => {
     try {
       const fetched = await getSoroWillClient().getWill(willId);
+      if (!isMounted.current) {
+        return;
+      }
       setWill(fetched);
       setError(null);
     } catch (err) {
+      if (!isMounted.current) {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to load will');
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, [willId]);
 
   useEffect(() => {
-    safeGetPublicKey().then(setPublicKey);
+    safeGetPublicKey().then((key) => {
+      if (isMounted.current) {
+        setPublicKey(key);
+      }
+    });
   }, []);
 
   useEffect(() => {
     refetch();
   }, [refetch]);
+
+  // Quick client-side validation before hitting the RPC layer
+  if (!isValidWillId(willId)) {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-8 text-center">
+        <h1 className="text-lg font-semibold text-red-300">Invalid will ID</h1>
+        <p className="mt-2 text-sm text-red-300/70">
+          &ldquo;{willId}&rdquo; is not a valid will identifier. Will IDs must be non-negative integers.
+        </p>
+      </div>
+    );
+  }
 
   async function handleClaim() {
     setClaiming(true);
@@ -47,8 +86,11 @@ export default function InheritPage() {
       const { txHash } = await getSoroWillClient().releaseInheritance(willId);
       setClaimTxHash(txHash);
       await refetch();
+      toast.success('Inheritance claimed successfully');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to claim inheritance');
+      const message = err instanceof Error ? err.message : 'Failed to claim inheritance';
+      setError(message);
+      toast.error(message);
     } finally {
       setClaiming(false);
     }
@@ -136,7 +178,7 @@ export default function InheritPage() {
           type="button"
           onClick={handleClaim}
           disabled={claiming}
-          className="w-full rounded-full bg-will-purple px-4 py-3 text-sm font-semibold text-white transition hover:bg-will-purple/90 disabled:opacity-60"
+          className="w-full rounded-full bg-will-purple px-4 py-3 text-sm font-semibold text-white transition hover:bg-will-purple/90 disabled:opacity-60 active:scale-95"
         >
           {claiming ? 'Claiming…' : 'Claim Inheritance'}
         </button>

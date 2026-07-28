@@ -20,3 +20,8 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# testing
+/test-results/
+/playwright-report/
+/tests/e2e/__snapshots__/*-linux.png
