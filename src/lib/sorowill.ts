@@ -1,5 +1,32 @@
 import { SoroWillClient, type SoroWillNetwork, type Will } from '@sorowill/sdk';
 
+function validateStellarNetwork(value: string): SoroWillNetwork {
+  if (value !== 'testnet' && value !== 'mainnet') {
+    throw new Error(
+      `Invalid NEXT_PUBLIC_STELLAR_NETWORK: "${value}". Must be exactly 'testnet' or 'mainnet'.`,
+    );
+  }
+  return value;
+}
+
+function validateContractId(value: string): void {
+  if (!/^C[A-Z2-7]{55}$/.test(value)) {
+    throw new Error(
+      `Invalid NEXT_PUBLIC_CONTRACT_ID: "${value}". Must be a valid Stellar contract address (starts with 'C' followed by 55 base32 characters).`,
+    );
+  }
+}
+
+function validateRpcUrl(value: string): void {
+  try {
+    new URL(value);
+  } catch {
+    throw new Error(
+      `Invalid NEXT_PUBLIC_RPC_URL: "${value}". Must be a valid URL.`,
+    );
+  }
+}
+
 function readEnv(name: string, fallback?: string): string {
   const value = process.env[name];
   if (!value) {
@@ -22,25 +49,39 @@ export function getNetwork(): SoroWillNetwork {
       return stored as SoroWillNetwork;
     }
   }
-  return readEnv('NEXT_PUBLIC_STELLAR_NETWORK', 'testnet') as SoroWillNetwork;
+  const value = readEnv('NEXT_PUBLIC_STELLAR_NETWORK', 'testnet');
+  return validateStellarNetwork(value);
 }
 
 /** The deployed SoroWill contract address configured for this deployment. */
 export function getContractId(): string {
   const network = getNetwork();
+  let contractId: string;
   if (network === 'mainnet') {
-    return process.env.NEXT_PUBLIC_CONTRACT_ID_MAINNET || process.env.NEXT_PUBLIC_CONTRACT_ID || '';
+    contractId = process.env.NEXT_PUBLIC_CONTRACT_ID_MAINNET || process.env.NEXT_PUBLIC_CONTRACT_ID || '';
+  } else {
+    contractId = process.env.NEXT_PUBLIC_CONTRACT_ID_TESTNET || process.env.NEXT_PUBLIC_CONTRACT_ID || '';
   }
-  return process.env.NEXT_PUBLIC_CONTRACT_ID_TESTNET || process.env.NEXT_PUBLIC_CONTRACT_ID || '';
+  if (!contractId) {
+    throw new Error(
+      'Missing required environment variable: NEXT_PUBLIC_CONTRACT_ID (or NEXT_PUBLIC_CONTRACT_ID_MAINNET/NEXT_PUBLIC_CONTRACT_ID_TESTNET). Copy .env.example to .env.local and fill it in.',
+    );
+  }
+  validateContractId(contractId);
+  return contractId;
 }
 
 /** The Soroban RPC URL configured for this deployment, for display/linking purposes. */
 export function getRpcUrl(): string {
   const network = getNetwork();
+  let rpcUrl: string;
   if (network === 'mainnet') {
-    return process.env.NEXT_PUBLIC_RPC_URL_MAINNET || 'https://soroban-mainnet.stellar.org';
+    rpcUrl = process.env.NEXT_PUBLIC_RPC_URL_MAINNET || 'https://soroban-mainnet.stellar.org';
+  } else {
+    rpcUrl = process.env.NEXT_PUBLIC_RPC_URL_TESTNET || process.env.NEXT_PUBLIC_RPC_URL || 'https://soroban-testnet.stellar.org';
   }
-  return process.env.NEXT_PUBLIC_RPC_URL_TESTNET || process.env.NEXT_PUBLIC_RPC_URL || 'https://soroban-testnet.stellar.org';
+  validateRpcUrl(rpcUrl);
+  return rpcUrl;
 }
 
 /**
