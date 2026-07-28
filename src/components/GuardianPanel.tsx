@@ -33,7 +33,7 @@ export function GuardianPanel({
           <span className="text-lg">👨‍⚖️</span>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-will-light">No guardians</h3>
-            <p className="mt-1 text-sm text-will-light/60">No guardians configured for this will. Guardians can force an early release if you're incapacitated.</p>
+            <p className="mt-1 text-sm text-will-light/60">No guardians configured for this will. Guardians can force an early release if you&apos;re incapacitated.</p>
           </div>
         </div>
       </div>
@@ -81,9 +81,19 @@ export function GuardianPanel({
         ))}
       </div>
       <ul className="mt-3 space-y-1.5" aria-label="Guardian addresses">
-        {guardians.map((guardian) => (
-          <li key={guardian} className="font-mono text-sm text-will-light/80">
-            {truncateAddress(guardian)}
+        {guardians.map((guardian, index) => (
+          <li key={guardian} className="flex items-center justify-between font-mono text-sm text-will-light/80">
+            <span>{truncateAddress(guardian)}</span>
+            {isOwner && willId ? (
+              <button
+                type="button"
+                onClick={() => handleCopy(index)}
+                className="text-xs text-will-purple hover:underline"
+                aria-label={`Copy invite link for guardian ${index + 1}`}
+              >
+                {copiedIndex === index ? 'Copied!' : 'Copy invite link'}
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -104,4 +114,3 @@ export function GuardianPanel({
     </section>
   );
 }
-

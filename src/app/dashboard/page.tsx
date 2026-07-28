@@ -244,6 +244,18 @@ export default function DashboardPage() {
     }
   }
 
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabName: Tab) => {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      const tabs: Tab[] = ['owned', 'inheriting', 'guardianship'];
+      const idx = tabs.indexOf(tabName);
+      const newIdx = event.key === 'ArrowLeft'
+        ? (idx - 1 + tabs.length) % tabs.length
+        : (idx + 1) % tabs.length;
+      setTab(tabs[newIdx]);
+    }
+  };
+
   if (checkedWallet && !publicKey) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
@@ -381,7 +393,7 @@ export default function DashboardPage() {
           onKeyDown={(e) => handleTabKeyDown(e, 'owned')}
           role="tab"
           aria-selected={tab === 'owned'}
-          aria-controls="owned-panel"
+          aria-controls="tab-panel"
           className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
             tab === 'owned'
               ? 'bg-will-purple text-white'
@@ -399,7 +411,7 @@ export default function DashboardPage() {
           onKeyDown={(e) => handleTabKeyDown(e, 'inheriting')}
           role="tab"
           aria-selected={tab === 'inheriting'}
-          aria-controls="inheriting-panel"
+          aria-controls="tab-panel"
           className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${
             tab === 'inheriting'
               ? 'bg-will-purple text-white'

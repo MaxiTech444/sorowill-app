@@ -15,7 +15,6 @@ import {
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
-import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
@@ -73,6 +72,7 @@ export default function WillDetailPage() {
   const params = useParams<{ id: string }>();
   const willId = params.id;
 
+  // All hooks must be called before any conditional returns
   const [will, setWill] = useState<Will | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -237,6 +237,18 @@ export default function WillDetailPage() {
     } finally {
       setReminderPending(false);
     }
+  }
+
+  // Quick client-side validation before hitting the RPC layer
+  if (!isValidWillId(willId)) {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-8 text-center">
+        <h1 className="text-lg font-semibold text-red-300">Invalid will ID</h1>
+        <p className="mt-2 text-sm text-red-300/70">
+          &ldquo;{willId}&rdquo; is not a valid will identifier. Will IDs must be non-negative integers.
+        </p>
+      </div>
+    );
   }
 
   if (loading) {
