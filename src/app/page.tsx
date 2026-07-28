@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Footer } from '@/components/Footer';
 
 const STEPS = [
   {
@@ -114,6 +115,7 @@ export default function LandingPage() {
           </a>
         </div>
       </footer>
+      <Footer />
     </div>
   );
 }

@@ -20,9 +20,36 @@ function equalSplit(count: number): number[] {
   return Array.from({ length: count }, (_, index) => base + (index < remainder ? 1 : 0));
 }
 
+/**
+ * Returns a human-readable validation message for the current beneficiary
+ * list, or `null` when the list is valid.
+ *
+ * Two distinct failure modes are distinguished:
+ *  1. Any percentage is non-integer   → "Percentages must be whole numbers"
+ *  2. Sum is not 100 (but all integers) → "Total must equal 100%"
+ */
+function getBeneficiaryValidationMessage(beneficiaries: Beneficiary[]): string | null {
+  if (beneficiaries.length === 0) {
+    return 'Add at least one beneficiary';
+  }
+
+  const hasNonInteger = beneficiaries.some((b) => !Number.isInteger(b.percentage));
+  if (hasNonInteger) {
+    return 'Percentages must be whole numbers (e.g. 33, not 33.5)';
+  }
+
+  const total = beneficiaries.reduce((sum, b) => sum + b.percentage, 0);
+  if (total !== 100) {
+    return `Total must equal 100% (currently ${total}%)`;
+  }
+
+  return null;
+}
+
 export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {
   const total = value.reduce((sum, b) => sum + b.percentage, 0);
-  const isValid = value.length > 0 && total === 100;
+  const validationMessage = getBeneficiaryValidationMessage(value);
+  const isValid = validationMessage === null;
 
   const [resolvedAddresses, setResolvedAddresses] = useState<Map<number, string>>(new Map());
   const [resolvingIndex, setResolvingIndex] = useState<number | null>(null);
@@ -193,8 +220,16 @@ export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {
         + Add beneficiary
       </button>
 
-      <div className={`text-sm ${isValid ? 'text-emerald-400' : 'text-amber-400'}`} role="status" aria-live="polite">
-        Total: {total}% {isValid ? '✓' : '(must equal 100%)'}
+      <div
+        className={`text-sm ${isValid ? 'text-emerald-400' : 'text-amber-400'}`}
+        role="status"
+        aria-live="polite"
+      >
+        {isValid ? (
+          <>Total: {total}% ✓</>
+        ) : (
+          <>Total: {total}% — {validationMessage}</>
+        )}
       </div>
     </fieldset>
   );
