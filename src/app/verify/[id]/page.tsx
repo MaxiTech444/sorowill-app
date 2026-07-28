@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { formatDeadline, WillStatus } from '@sorowill/sdk';
 
+import { truncateAddress } from '@/lib/freighter';
 import { getContractId, getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { StatusBanner } from '@/components/StatusBanner';
 import { ShareVerification } from '@/components/ShareVerification';
@@ -68,7 +69,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
         <ul className="mt-2 space-y-1.5">
           {will.beneficiaries.map((beneficiary) => (
             <li key={beneficiary.address} className="flex justify-between text-sm">
-              <span className="font-mono text-will-light/80">{truncate(beneficiary.address)}</span>
+              <span className="font-mono text-will-light/80">{truncateAddress(beneficiary.address)}</span>
               <span className="text-will-light">{beneficiary.percentage}%</span>
             </li>
           ))}

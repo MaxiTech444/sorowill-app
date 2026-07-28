@@ -81,9 +81,21 @@ export default function WillDetailPage() {
   const [reminderStatus, setReminderStatus] = useState<string | null>(null);
   const [reminderPending, setReminderPending] = useState(false);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const refetch = useCallback(async () => {
     try {
       const fetched = await getSoroWillClient().getWill(willId);
+      if (!isMounted.current) {
+        return;
+      }
       setWill(fetched);
       // Only reset draft beneficiaries when the edit panel is not open,
       // otherwise in-progress edits would be silently overwritten.
@@ -92,14 +104,23 @@ export default function WillDetailPage() {
       }
       setError(null);
     } catch (err) {
+      if (!isMounted.current) {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to load will');
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, [willId]);
 
   useEffect(() => {
-    safeGetPublicKey().then(setPublicKey);
+    safeGetPublicKey().then((key) => {
+      if (isMounted.current) {
+        setPublicKey(key);
+      }
+    });
   }, []);
 
   useEffect(() => {
