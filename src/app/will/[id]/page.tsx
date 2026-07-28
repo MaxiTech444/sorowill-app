@@ -213,6 +213,7 @@ export default function WillDetailPage() {
   const graceExpired = will.status === WillStatus.Triggered && grace !== null && Date.now() >= grace.getTime();
 
   const shares = calculateShares(will.balance, will.beneficiaries);
+  const beneficiaryMap = new Map(will.beneficiaries.map((b) => [b.address, b.percentage]));
 
   return (
     <div className="space-y-6">
@@ -487,10 +488,10 @@ export default function WillDetailPage() {
             </tr>
           </thead>
           <tbody>
-            {shares.map((row, index) => (
+            {shares.map((row) => (
               <tr key={row.address} className="border-t border-white/5">
                 <td className="py-2 font-mono text-will-light">{truncateAddress(row.address)}</td>
-                <td className="py-2 text-will-light/70">{will.beneficiaries[index]?.percentage}%</td>
+                <td className="py-2 text-will-light/70">{beneficiaryMap.get(row.address)}%</td>
                 <td className="py-2 text-will-light">{formatUSDC(BigInt(row.share))} USDC</td>
               </tr>
             ))}
