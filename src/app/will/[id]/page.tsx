@@ -73,6 +73,7 @@ export default function WillDetailPage() {
   const [topUpAmount, setTopUpAmount] = useState('');
   const [showEditBeneficiaries, setShowEditBeneficiaries] = useState(false);
   const [draftBeneficiaries, setDraftBeneficiaries] = useState<Beneficiary[]>([]);
+  const showEditBeneficiariesRef = useRef(false);
   const [showEarlyRelease, setShowEarlyRelease] = useState(false);
   const [earlyReleaseAmount, setEarlyReleaseAmount] = useState('');
   const [earlyReleaseRecipient, setEarlyReleaseRecipient] = useState('');
@@ -96,7 +97,11 @@ export default function WillDetailPage() {
         return;
       }
       setWill(fetched);
-      setDraftBeneficiaries(fetched.beneficiaries);
+      // Only reset draft beneficiaries when the edit panel is not open,
+      // otherwise in-progress edits would be silently overwritten.
+      if (!showEditBeneficiariesRef.current) {
+        setDraftBeneficiaries(fetched.beneficiaries);
+      }
       setError(null);
     } catch (err) {
       if (!isMounted.current) {
@@ -143,7 +148,6 @@ export default function WillDetailPage() {
     }
   }
 
-  async function runAction(name: string, fn: () => Promise<{ txHash: string }>) {
   async function runAction(
     name: string,
     fn: () => Promise<{ txHash: string }>,
@@ -339,7 +343,13 @@ export default function WillDetailPage() {
             </button>
             <button
               type="button"
-              onClick={() => setShowEditBeneficiaries((s) => !s)}
+              onClick={() => {
+                setShowEditBeneficiaries((s) => {
+                  const next = !s;
+                  showEditBeneficiariesRef.current = next;
+                  return next;
+                });
+              }}
               className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
             >
               Update Beneficiaries
@@ -489,7 +499,7 @@ export default function WillDetailPage() {
               );
               setShowEditBeneficiaries(false);
             }}
-            disabled={busyAction !== null || !validateBeneficiaries(draftBeneficiaries)}
+            disabled={busyAction !== null || !validateBeneficiaries(draftBeneficiaries) || !draftBeneficiaries.every((b) => b.address.trim() !== '')}
             className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             Save Beneficiaries

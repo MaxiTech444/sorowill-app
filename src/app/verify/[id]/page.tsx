@@ -1,3 +1,5 @@
+import { notFound } from 'next/navigation';
+
 import { formatDeadline, WillStatus } from '@sorowill/sdk';
 
 import { truncateAddress } from '@/lib/freighter';
@@ -5,8 +7,49 @@ import { getContractId, getSoroWillClient, stellarExpertUrl } from '@/lib/sorowi
 import { StatusBanner } from '@/components/StatusBanner';
 import { ShareVerification } from '@/components/ShareVerification';
 
+function truncate(address: string): string {
+  if (address.length <= 12) {
+    return address;
+  }
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
+/**
+ * Returns true when the error clearly indicates the will does not exist on
+ * chain (contract-level "will not found" / "WillNotFound"). Transient RPC
+ * errors will not match this pattern and are allowed to propagate to the
+ * route's generic error boundary instead.
+ */
+function isWillNotFoundError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  // The SDK throws: "SoroWill simulation failed for get_will: ..."
+  // The Soroban contract returns error code #1 (WillNotFound).
+  // Match on any combination of these signals so the check stays robust
+  // even if the exact error string changes slightly.
+  return (
+    msg.includes('get_will') &&
+    (msg.includes('willnotfound') ||
+      msg.includes('not found') ||
+      msg.includes('#1') ||
+      msg.includes('error(contract, #1)') ||
+      msg.includes('no such will'))
+  );
+}
+
 export default async function VerifyPage({ params }: { params: { id: string } }) {
-  const will = await getSoroWillClient().getWill(params.id);
+  let will;
+  try {
+    will = await getSoroWillClient().getWill(params.id);
+  } catch (error) {
+    if (isWillNotFoundError(error)) {
+      notFound();
+    }
+    // Any other error (network timeout, RPC outage, …) re-throws so the
+    // route-level error.tsx boundary can display it with a "Try again" button.
+    throw error;
+  }
+
   const nextDeadline = new Date(will.lastCheckin.getTime() + will.checkinPeriodDays * 86_400 * 1000);
 
   return (
@@ -53,4 +96,3 @@ export default async function VerifyPage({ params }: { params: { id: string } })
     </div>
   );
 }
-
