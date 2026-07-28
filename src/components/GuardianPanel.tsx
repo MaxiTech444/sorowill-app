@@ -6,6 +6,7 @@ const GUARDIAN_THRESHOLD = 2;
 export interface GuardianPanelProps {
   guardians: string[];
   guardianVotes: number;
+  willId?: string;
   isGuardian?: boolean;
   isActive?: boolean;
   isCastingVote?: boolean;
@@ -16,12 +17,15 @@ export interface GuardianPanelProps {
 export function GuardianPanel({
   guardians,
   guardianVotes,
+  willId,
   isGuardian = false,
   isActive = false,
   isCastingVote = false,
   onCastVote,
   error,
 }: GuardianPanelProps) {
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
   if (guardians.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-white/20 bg-white/5 p-4">

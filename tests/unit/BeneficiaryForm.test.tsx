@@ -92,10 +92,47 @@ describe('BeneficiaryForm', () => {
     render(<BeneficiaryForm value={beneficiaries} onChange={onChange} />);
     await user.click(screen.getByRole('button', { name: /distribute percentages equally/i }));
     expect(onChange).toHaveBeenCalledWith([
-      { address: 'GA', percentage: 34 },
+      { address: 'GA', percentage: 33 },
       { address: 'GB', percentage: 33 },
-      { address: 'GC', percentage: 33 },
+      { address: 'GC', percentage: 34 },
     ]);
+  });
+
+  it('equal split with 2 beneficiaries gives 50/50', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const beneficiaries: Beneficiary[] = [
+      { address: 'GA', percentage: 0 },
+      { address: 'GB', percentage: 0 },
+    ];
+    render(<BeneficiaryForm value={beneficiaries} onChange={onChange} />);
+    await user.click(screen.getByRole('button', { name: /split equally/i }));
+    expect(onChange).toHaveBeenCalledWith([
+      { address: 'GA', percentage: 50 },
+      { address: 'GB', percentage: 50 },
+    ]);
+  });
+
+  it('equal split with 6 beneficiaries distributes remainder to last rows', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const beneficiaries: Beneficiary[] = Array.from({ length: 6 }, (_, i) => ({
+      address: `G${i}`,
+      percentage: 0,
+    }));
+    render(<BeneficiaryForm value={beneficiaries} onChange={onChange} />);
+    await user.click(screen.getByRole('button', { name: /split equally/i }));
+    // 100 / 6 = 16 remainder 4 → last 4 get 17, first 2 get 16
+    const called = onChange.mock.calls[0][0];
+    expect(called).toHaveLength(6);
+    expect(called[0].percentage).toBe(16);
+    expect(called[1].percentage).toBe(16);
+    expect(called[2].percentage).toBe(17);
+    expect(called[3].percentage).toBe(17);
+    expect(called[4].percentage).toBe(17);
+    expect(called[5].percentage).toBe(17);
+    const sum = called.reduce((s: number, b: Beneficiary) => s + b.percentage, 0);
+    expect(sum).toBe(100);
   });
 
   it('disables split equally when no beneficiaries', () => {
