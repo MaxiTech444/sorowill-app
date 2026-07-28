@@ -169,14 +169,11 @@ describe('sorowill.ts helpers', () => {
 
       const invalidUrls = [
         'not a url',
-        'htp://example.com', // Typo in protocol
-        '',
+        'just text without protocol',
       ];
 
       invalidUrls.forEach(url => {
-        if (url) {
-          expect(() => new URL(url)).toThrow();
-        }
+        expect(() => new URL(url)).toThrow();
       });
     });
   });
