@@ -1,0 +1,147 @@
+{
+  "common": {
+    "soroWill": "SoroWill",
+    "onStellarSoroban": "On Stellar Soroban",
+    "dashboard": "Dashboard",
+    "createAWill": "Create a Will",
+    "connectWallet": "Connect Wallet",
+    "connecting": "Connecting…",
+    "disconnect": "Disconnect",
+    "viewOnGithub": "View on GitHub",
+    "githubLink": "GitHub",
+    "mitLicense": "MIT License",
+    "builtOnStellar": "SoroWill, built on Stellar",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "loading": "Loading…",
+    "error": "Error",
+    "noWillsMatch": "No wills match your search or filter.",
+    "allStatuses": "All statuses"
+  },
+  "landing": {
+    "heroTitle": "Protect your crypto legacy",
+    "heroDescription": "SoroWill is a trustless on-chain inheritance protocol. Lock USDC, name your beneficiaries, and let a smart contract carry out your wishes if you ever go silent.",
+    "createYourWill": "Create your Will",
+    "howItWorks": "How it works",
+    "whySoroWill": "Why SoroWill",
+    "steps": {
+      "lockUsdc": {
+        "title": "Lock USDC",
+        "description": "Deposit USDC into a SoroWill contract and name your beneficiaries with percentage splits."
+      },
+      "checkInRegularly": {
+        "title": "Check in regularly",
+        "description": "Prove you're still active with a simple check-in before your deadline passes."
+      },
+      "missTriggersGrace": {
+        "title": "Miss a check-in triggers grace period",
+        "description": "If you miss the deadline, anyone can trigger the will — starting a grace period for you to respond."
+      },
+      "fundsRelease": {
+        "title": "Funds release to heirs automatically",
+        "description": "If the grace period expires without a response, the contract splits your USDC to your beneficiaries."
+      }
+    },
+    "why": {
+      "trustless": {
+        "title": "Trustless",
+        "description": "No lawyer, no court, no middleman. The contract enforces the outcome exactly as configured."
+      },
+      "automatic": {
+        "title": "Automatic",
+        "description": "Anyone can trigger a missed check-in or release funds once conditions are met — no gatekeeper required."
+      },
+      "reversible": {
+        "title": "Reversible",
+        "description": "Cancel anytime while you're active, or update your beneficiaries whenever your circumstances change."
+      }
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "myWills": "My Wills",
+    "inheriting": "Inheriting",
+    "guardianship": "Guardianship",
+    "newWill": "+ New Will",
+    "connectWalletPrompt": "Connect your wallet",
+    "connectWalletDescription": "Connect Freighter to see the wills you own and the ones you're a beneficiary or guardian of.",
+    "searchPlaceholder": "Search by will ID or beneficiary address",
+    "activeWillCount": "{count, plural, =0 {No active wills} =1 {1 active will} other {# active will(s)}}",
+    "noWillsOwned": "You haven't created any wills yet.",
+    "notABeneficiary": "No one has named you as a beneficiary yet.",
+    "notAGuardian": "You are not designated as a guardian for any wills.",
+    "noWillsYet": "No wills yet",
+    "notABeneficiaryYet": "Not a beneficiary yet",
+    "noWillsDescription": "You haven't created any wills. Start protecting your crypto legacy today.",
+    "notABeneficiaryDescription": "No one has named you as a beneficiary yet.",
+    "createFirstWill": "Create your first will",
+    "guardianAlert": "You are a designated guardian on {count} active will(s).",
+    "viewRole": "View Role",
+    "multiSelectMode": "Multi-select Mode",
+    "cancelMultiSelect": "Cancel Multi-select",
+    "batchTopUp": "Batch Top-up ({count} will{count, plural, =1 {} other {s}} selected)",
+    "batchTopUpDescription": "Specify the top-up amount for each selected will.",
+    "currentBalance": "Current balance: {balance} USDC",
+    "totalAmount": "Total Amount: {amount} USDC",
+    "submitBatchTopUp": "Submit Batch Top-up",
+    "submittingBatch": "Submitting Batch…",
+    "checkIn": "Check In",
+    "checkingIn": "Checking in…",
+    "details": "Details",
+    "usdcLocked": "{amount} USDC locked",
+    "checkInDue": "Check-in due in {days} day{days, plural, =1 {} other {s}}",
+    "checkInOverdue": "Check-in overdue"
+  },
+  "willDetail": {
+    "willNumber": "Will #{id}",
+    "owner": "Owner: {address}",
+    "exportCertificate": "Export Certificate (PDF)",
+    "generating": "Generating…",
+    "lockedBalance": "Locked balance",
+    "nextCheckInDue": "Next check-in due",
+    "gracePeriodEnds": "Grace period ends",
+    "checkIn": "Check In",
+    "checkingIn": "Checking in…",
+    "emergencyCheckIn": "Emergency Check In",
+    "submitting": "Submitting…",
+    "triggerWill": "Trigger Will",
+    "triggering": "Triggering…",
+    "releaseInheritance": "Release Inheritance",
+    "releasing": "Releasing…",
+    "topUp": "Top Up",
+    "releaseEarly": "Release Early",
+    "updateBeneficiaries": "Update Beneficiaries",
+    "saveBeneficiaries": "Save Beneficiaries",
+    "duplicate": "Duplicate",
+    "cancelWill": "Cancel Will",
+    "cancelling": "Cancelling…",
+    "checkInReminders": "Check-in reminders",
+    "reminderDescription": "Receive an email 2+ weeks before the deadline and again when it's imminent.",
+    "enableReminders": "Enable reminders",
+    "saving": "Saving…",
+    "topUpAmount": "Top up amount (USDC)",
+    "beneficiaries": "Beneficiaries",
+    "address": "Address",
+    "percentage": "Percentage",
+    "share": "Share",
+    "recentActivity": "Recent activity",
+    "noActionsTaken": "No actions taken yet this session.",
+    "couldNotLoad": "Couldn't load this will",
+    "releaseEarlyTitle": "Release early to beneficiary",
+    "amountUSDC": "Amount (USDC)",
+    "recipientAddress": "Recipient address",
+    "earlyReleaseComingSoon": "Note: Partial early release requires SDK support (coming soon)"
+  },
+  "status": {
+    "active": "Active",
+    "triggered": "Triggered — grace period running",
+    "released": "Released",
+    "cancelled": "Cancelled",
+    "activeDescription": "This will is active. The owner is checking in on schedule.",
+    "triggeredDescription": "A check-in deadline was missed. The owner can still prove they are alive.",
+    "releasedDescription": "The inheritance has been distributed to all beneficiaries.",
+    "cancelledDescription": "The owner cancelled this will and withdrew the balance."
+  }
+}

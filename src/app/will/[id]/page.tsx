@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useParams } from 'next/navigation';
 
 import {
@@ -88,6 +88,7 @@ export default function WillDetailPage() {
   const [topUpAmount, setTopUpAmount] = useState('');
   const [showEditBeneficiaries, setShowEditBeneficiaries] = useState(false);
   const [draftBeneficiaries, setDraftBeneficiaries] = useState<Beneficiary[]>([]);
+  const showEditBeneficiariesRef = useRef(false);
   const [showEarlyRelease, setShowEarlyRelease] = useState(false);
   const [earlyReleaseAmount, setEarlyReleaseAmount] = useState('');
   const [earlyReleaseRecipient, setEarlyReleaseRecipient] = useState('');
@@ -95,17 +96,39 @@ export default function WillDetailPage() {
   const [reminderStatus, setReminderStatus] = useState<string | null>(null);
   const [reminderPending, setReminderPending] = useState(false);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const refetch = useCallback(async () => {
     try {
       const fetched = await getSoroWillClient().getWill(willId);
+      if (!isMounted.current) {
+        return;
+      }
       setWill(fetched);
       setDraftBeneficiaries(fetched.beneficiaries);
       setLastFetchTime(new Date());
+      // Only reset draft beneficiaries when the edit panel is not open,
+      // otherwise in-progress edits would be silently overwritten.
+      if (!showEditBeneficiariesRef.current) {
+        setDraftBeneficiaries(fetched.beneficiaries);
+      }
       setError(null);
     } catch (err) {
+      if (!isMounted.current) {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to load will');
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, [willId]);
 
@@ -128,7 +151,11 @@ export default function WillDetailPage() {
   }, [willId, toast]);
 
   useEffect(() => {
-    safeGetPublicKey().then(setPublicKey);
+    safeGetPublicKey().then((key) => {
+      if (isMounted.current) {
+        setPublicKey(key);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -156,7 +183,6 @@ export default function WillDetailPage() {
     }
   }
 
-  async function runAction(name: string, fn: () => Promise<{ txHash: string }>) {
   async function runAction(
     name: string,
     fn: () => Promise<{ txHash: string }>,
@@ -368,7 +394,13 @@ export default function WillDetailPage() {
             </button>
             <button
               type="button"
-              onClick={() => setShowEditBeneficiaries((s) => !s)}
+              onClick={() => {
+                setShowEditBeneficiaries((s) => {
+                  const next = !s;
+                  showEditBeneficiariesRef.current = next;
+                  return next;
+                });
+              }}
               className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
             >
               Update Beneficiaries
@@ -518,7 +550,7 @@ export default function WillDetailPage() {
               );
               setShowEditBeneficiaries(false);
             }}
-            disabled={busyAction !== null || !validateBeneficiaries(draftBeneficiaries)}
+            disabled={busyAction !== null || !validateBeneficiaries(draftBeneficiaries) || !draftBeneficiaries.every((b) => b.address.trim() !== '')}
             className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             Save Beneficiaries

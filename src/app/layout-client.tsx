@@ -4,6 +4,8 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 
 import { WalletConnect } from '@/components/WalletConnect';
+import { NetworkMismatchBanner } from '@/components/NetworkMismatchBanner';
+import { NetworkSwitcher } from '@/components/NetworkSwitcher';
 import { ToastProvider } from '@/components/Toast';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -13,6 +15,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <ToastProvider>
         <header className="sticky top-0 z-10 border-b border-white/10 bg-will-dark/80 backdrop-blur dark:bg-will-dark/80">
+        <NetworkMismatchBanner />
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-will-light">
             <svg viewBox="0 0 100 100" className="h-6 w-6 shrink-0" aria-hidden="true">
@@ -37,6 +40,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
             </Link>
           </nav>
           <div className="flex items-center gap-3">
+            <NetworkSwitcher />
             <ThemeToggle />
             <WalletConnect />
           </div>

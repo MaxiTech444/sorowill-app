@@ -7,8 +7,7 @@ import type { Beneficiary } from '@sorowill/sdk';
 describe('BeneficiaryForm', () => {
   it('renders with empty state', () => {
     render(<BeneficiaryForm value={[]} onChange={vi.fn()} />);
-    expect(screen.getByText('Total: 0%')).toBeInTheDocument();
-    expect(screen.getByText('(must equal 100%)')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Add at least one beneficiary');
   });
 
   it('renders a beneficiary row', () => {
@@ -51,15 +50,36 @@ describe('BeneficiaryForm', () => {
   it('shows valid state when total is 100%', () => {
     const beneficiaries: Beneficiary[] = [{ address: 'GABC', percentage: 100 }];
     render(<BeneficiaryForm value={beneficiaries} onChange={vi.fn()} />);
-    expect(screen.getByText('Total: 100% ✓')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Total: 100% ✓');
   });
 
-  it('shows invalid state when total is not 100%', () => {
-    const beneficiaries: Beneficiary[] = [{ address: 'GABC', percentage: 60 }];
+  // ── Issue #65: distinct messages for the two failure modes ──────────────
+
+  it('shows "must be whole numbers" message when any percentage is non-integer', () => {
+    // 33.5 + 33.5 + 33 = 100, but the fractional values make it invalid.
+    const beneficiaries: Beneficiary[] = [
+      { address: 'GAAA', percentage: 33.5 },
+      { address: 'GBBB', percentage: 33.5 },
+      { address: 'GCCC', percentage: 33 },
+    ];
     render(<BeneficiaryForm value={beneficiaries} onChange={vi.fn()} />);
-    expect(screen.getByText('Total: 60%')).toBeInTheDocument();
-    expect(screen.getByText('(must equal 100%)')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Percentages must be whole numbers');
+    // Must NOT show the "must equal 100%" message for this case.
+    expect(screen.getByRole('status')).not.toHaveTextContent('must equal 100%');
   });
+
+  it('shows "must equal 100%" message when percentages are integers but sum is wrong', () => {
+    const beneficiaries: Beneficiary[] = [
+      { address: 'GAAA', percentage: 60 },
+      { address: 'GBBB', percentage: 30 },
+    ];
+    render(<BeneficiaryForm value={beneficiaries} onChange={vi.fn()} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Total must equal 100%');
+    // Must NOT show the non-integer message for this case.
+    expect(screen.getByRole('status')).not.toHaveTextContent('whole numbers');
+  });
+
+  // ────────────────────────────────────────────────────────────────────────
 
   it('applies equal split when clicked', async () => {
     const user = userEvent.setup();
@@ -70,7 +90,7 @@ describe('BeneficiaryForm', () => {
       { address: 'GC', percentage: 0 },
     ];
     render(<BeneficiaryForm value={beneficiaries} onChange={onChange} />);
-    await user.click(screen.getByRole('button', { name: /split equally/i }));
+    await user.click(screen.getByRole('button', { name: /distribute percentages equally/i }));
     expect(onChange).toHaveBeenCalledWith([
       { address: 'GA', percentage: 34 },
       { address: 'GB', percentage: 33 },
@@ -80,6 +100,6 @@ describe('BeneficiaryForm', () => {
 
   it('disables split equally when no beneficiaries', () => {
     render(<BeneficiaryForm value={[]} onChange={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /split equally/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /distribute percentages equally/i })).toBeDisabled();
   });
 });
