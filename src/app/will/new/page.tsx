@@ -7,6 +7,7 @@ import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '
 
 import { truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
+import { GUARDIAN_THRESHOLD, MAX_GUARDIANS } from '@/lib/constants';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 
 const CHECKIN_OPTIONS = [30, 60, 90, 180, 365];
@@ -61,7 +62,7 @@ export default function NewWillPage() {
   }
 
   function addGuardian() {
-    if (guardians.length < 3) {
+    if (guardians.length < MAX_GUARDIANS) {
       setGuardians((prev) => [...prev, '']);
     }
   }
@@ -201,19 +202,19 @@ export default function NewWillPage() {
         {step === 3 ? (
           <fieldset className="space-y-3">
             <div className="flex items-center justify-between">
-              <legend className="text-sm font-medium text-will-light">Guardians (optional, up to 3)</legend>
+              <legend className="text-sm font-medium text-will-light">Guardians (optional, up to {MAX_GUARDIANS})</legend>
               <button
                 type="button"
                 onClick={addGuardian}
-                disabled={guardians.length >= 3}
-                aria-label={`Add guardian (${guardians.length} of 3)`}
+                disabled={guardians.length >= MAX_GUARDIANS}
+                aria-label={`Add guardian (${guardians.length} of ${MAX_GUARDIANS})`}
                 className="text-xs font-medium text-will-purple hover:underline disabled:opacity-40"
               >
                 + Add guardian
               </button>
             </div>
             <p className="text-xs text-will-light/50">
-              Any 2 of your guardians can force an early release if you&apos;re incapacitated.
+              Any {GUARDIAN_THRESHOLD} of your guardians can force an early release if you&apos;re incapacitated.
             </p>
             {guardians.map((guardian, index) => (
               <div key={index} className="flex items-center gap-2">

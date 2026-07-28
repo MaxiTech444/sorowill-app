@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { truncateAddress } from '@/lib/freighter';
-
-const GUARDIAN_THRESHOLD = 2;
+import { GUARDIAN_THRESHOLD } from '@/lib/constants';
 
 export interface GuardianPanelProps {
   guardians: string[];
