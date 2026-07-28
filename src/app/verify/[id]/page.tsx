@@ -17,9 +17,9 @@ export default async function VerifyPage({ params }: { params: { id: string } })
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-will-light">Verify Will #{will.id}</h1>
-        <p className="mt-1 text-sm text-will-light/60">
+      <div className="print-section">
+        <h1 className="text-2xl font-bold text-will-light print-title">Verify Will #{will.id}</h1>
+        <p className="print-hide mt-1 text-sm text-will-light/60">
           A public, read-only view of this will&apos;s on-chain state, straight from the SoroWill contract. No
           wallet is required to view this page.
         </p>
@@ -27,8 +27,8 @@ export default async function VerifyPage({ params }: { params: { id: string } })
 
       <StatusBanner status={will.status} />
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-        <h2 className="text-sm font-semibold text-will-light">Beneficiaries</h2>
+      <div className="print-section rounded-xl border border-white/10 bg-white/5 p-4">
+        <h2 className="text-sm font-semibold text-will-light print-heading">Beneficiaries</h2>
         <ul className="mt-2 space-y-1.5">
           {will.beneficiaries.map((beneficiary) => (
             <li key={beneficiary.address} className="flex justify-between text-sm">
@@ -40,19 +40,21 @@ export default async function VerifyPage({ params }: { params: { id: string } })
       </div>
 
       {will.status === WillStatus.Active ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <span className="text-xs uppercase tracking-wide text-will-light/60">Next check-in deadline</span>
-          <p className="mt-1 text-lg font-semibold text-will-light">{formatDeadline(nextDeadline)}</p>
+        <div className="print-section rounded-xl border border-white/10 bg-white/5 p-4">
+          <span className="text-xs uppercase tracking-wide text-will-light/60 print-text">Next check-in deadline</span>
+          <p className="mt-1 text-lg font-semibold text-will-light print-text">{formatDeadline(nextDeadline)}</p>
         </div>
       ) : null}
 
-      <ShareVerification />
+      <div className="print-hide">
+        <ShareVerification />
+      </div>
 
       <a
         href={stellarExpertUrl('contract', getContractId())}
         target="_blank"
         rel="noreferrer"
-        className="block rounded-full border border-white/20 px-4 py-3 text-center text-sm text-will-light/80 transition hover:border-white/40"
+        className="print-hide block rounded-full border border-white/20 px-4 py-3 text-center text-sm text-will-light/80 transition hover:border-white/40"
       >
         View SoroWill contract on Stellar Expert
       </a>

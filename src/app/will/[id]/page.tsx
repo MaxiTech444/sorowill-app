@@ -217,16 +217,16 @@ export default function WillDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 print-section">
         <div>
-          <h1 className="text-2xl font-bold text-will-light">Will #{will.id}</h1>
-          <p className="text-sm text-will-light/50">Owner: {truncateAddress(will.owner)}</p>
+          <h1 className="text-2xl font-bold text-will-light print-title">Will #{will.id}</h1>
+          <p className="text-sm text-will-light/50 print-text">Owner: {truncateAddress(will.owner)}</p>
         </div>
         <button
           type="button"
           onClick={handleExportCertificate}
           disabled={exportingCertificate}
-          className="rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
+          className="print-hide rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
         >
           {exportingCertificate ? 'Generating…' : 'Export Certificate (PDF)'}
         </button>
@@ -234,12 +234,12 @@ export default function WillDetailPage() {
 
       <StatusBanner status={will.status} />
 
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="text-sm text-red-400 print-hide">{error}</p> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="print-section grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <span className="text-xs uppercase tracking-wide text-will-light/60">Locked balance</span>
-          <p className="mt-1 text-2xl font-semibold text-will-light">{formatUSDC(BigInt(will.balance))} USDC</p>
+          <span className="text-xs uppercase tracking-wide text-will-light/60 print-text">Locked balance</span>
+          <p className="mt-1 text-2xl font-semibold text-will-light print-text">{formatUSDC(BigInt(will.balance))} USDC</p>
         </div>
 
         {will.status === WillStatus.Active ? (
@@ -253,7 +253,7 @@ export default function WillDetailPage() {
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-wrap sm:flex-row">
+      <div className="print-hide flex flex-col gap-2 sm:flex-wrap sm:flex-row">
         {isOwner && will.status === WillStatus.Active ? (
           <button
             type="button"
@@ -345,7 +345,7 @@ export default function WillDetailPage() {
       </div>
 
       {isOwner && will.status === WillStatus.Active ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="print-hide rounded-xl border border-white/10 bg-white/5 p-4">
           <h2 className="text-sm font-semibold text-will-light">Check-in reminders</h2>
           <p className="mt-1 text-sm text-will-light/60">
             Receive an email 2+ weeks before the deadline and again when it&apos;s imminent.
@@ -373,7 +373,7 @@ export default function WillDetailPage() {
 
       {showTopUp ? (
         <form
-          className="rounded-xl border border-white/10 bg-white/5 p-4"
+          className="print-hide rounded-xl border border-white/10 bg-white/5 p-4"
           onSubmit={async (e) => {
             e.preventDefault();
             await runAction('top_up', () => client.topUp(will.id, toStroops(topUpAmount).toString()));
@@ -407,7 +407,7 @@ export default function WillDetailPage() {
       ) : null}
 
       {showEarlyRelease ? (
-        <div className="rounded-xl border border-will-purple/40 bg-will-purple/10 p-4">
+        <div className="print-hide rounded-xl border border-will-purple/40 bg-will-purple/10 p-4">
           <h3 className="text-sm font-semibold text-will-light">Release early to beneficiary</h3>
           <div className="mt-3 space-y-3">
             <div>
@@ -459,7 +459,7 @@ export default function WillDetailPage() {
       ) : null}
 
       {showEditBeneficiaries ? (
-        <div className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
+        <div className="print-hide space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
           <BeneficiaryForm value={draftBeneficiaries} onChange={setDraftBeneficiaries} />
           <button
             type="button"
@@ -477,9 +477,9 @@ export default function WillDetailPage() {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-        <h2 className="text-sm font-semibold text-will-light">Beneficiaries</h2>
-        <table className="mt-3 w-full text-sm">
+      <div className="print-section rounded-xl border border-white/10 bg-white/5 p-4">
+        <h2 className="text-sm font-semibold text-will-light print-heading">Beneficiaries</h2>
+        <table className="mt-3 w-full text-sm print-table">
           <thead>
             <tr className="text-left text-xs uppercase tracking-wide text-will-light/50">
               <th className="pb-2 font-medium">Address</th>
@@ -499,23 +499,25 @@ export default function WillDetailPage() {
         </table>
       </div>
 
-      <GuardianPanel guardians={will.guardians} guardianVotes={will.guardianVotes} isOwner={isOwner} willId={will.id} />
-      <GuardianPanel
-        guardians={will.guardians}
-        guardianVotes={will.guardianVotes}
-        isGuardian={isGuardian}
-        isActive={will.status === WillStatus.Active}
-        isCastingVote={castingVoteId === will.id}
-        onCastVote={() => {
-          setCastingVoteId(will.id);
-          void runAction('cast_guardian_vote', () => client.guardianTrigger(will.id), getGuardianVoteErrorMessage).finally(
-            () => setCastingVoteId(null),
-          );
-        }}
-        error={error}
-      />
+      <div className="print-hide">
+        <GuardianPanel guardians={will.guardians} guardianVotes={will.guardianVotes} isOwner={isOwner} willId={will.id} />
+        <GuardianPanel
+          guardians={will.guardians}
+          guardianVotes={will.guardianVotes}
+          isGuardian={isGuardian}
+          isActive={will.status === WillStatus.Active}
+          isCastingVote={castingVoteId === will.id}
+          onCastVote={() => {
+            setCastingVoteId(will.id);
+            void runAction('cast_guardian_vote', () => client.guardianTrigger(will.id), getGuardianVoteErrorMessage).finally(
+              () => setCastingVoteId(null),
+            );
+          }}
+          error={error}
+        />
+      </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+      <div className="print-hide rounded-xl border border-white/10 bg-white/5 p-4">
         <h2 className="text-sm font-semibold text-will-light">Recent activity</h2>
         {activity.length === 0 ? (
           <div className="mt-2 flex items-center gap-2 text-sm text-will-light/60">
