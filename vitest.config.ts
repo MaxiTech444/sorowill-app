@@ -14,5 +14,7 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     globals: true,
     css: false,
+    include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['tests/e2e/**', 'src/lib/reminders.test.ts'],
   },
 });
