@@ -12,6 +12,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
+    "test:reminders": "tsx src/lib/reminders.test.ts"
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts"
   },
   "dependencies": {
