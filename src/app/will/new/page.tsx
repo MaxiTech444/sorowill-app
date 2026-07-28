@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '@sorowill/sdk';
 
 import { truncateAddress, safeGetPublicKey } from '@/lib/freighter';
-import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
 import { getUserBalance } from '@/lib/balance';
@@ -94,9 +93,22 @@ export default function NewWillPage() {
   const [cloneLoading, setCloneLoading] = useState(false);
   const [resumeAvailable, setResumeAvailable] = useState(false);
 
-  const [resolvedGuardians, setResolvedGuardians] = useState<Map<number, string>>(new Map());
-  const [resolvingGuardianIndex, setResolvingGuardianIndex] = useState<number | null>(null);
-  const [guardianResolutionError, setGuardianResolutionError] = useState<Map<number, string>>(
+  const [guardianIds, setGuardianIds] = useState<Map<number, string>>(new Map());
+
+  const stableGuardianIds = useMemo(() => {
+    const newIds = new Map(guardianIds);
+    guardians.forEach((_, index) => {
+      if (!newIds.has(index)) {
+        newIds.set(index, crypto.randomUUID());
+      }
+    });
+    setGuardianIds(newIds);
+    return newIds;
+  }, [guardians.length]);
+
+  const [resolvedGuardians, setResolvedGuardians] = useState<Map<string, string>>(new Map());
+  const [resolvingGuardianId, setResolvingGuardianId] = useState<string | null>(null);
+  const [guardianResolutionError, setGuardianResolutionError] = useState<Map<string, string>>(
     new Map(),
   );
 
@@ -227,57 +239,63 @@ export default function NewWillPage() {
 
   function updateGuardian(index: number, address: string) {
     setGuardians((prev) => prev.map((g, i) => (i === index ? address : g)));
-    setResolvedGuardians((prev) => {
-      const next = new Map(prev);
-      next.delete(index);
-      return next;
-    });
-    setGuardianResolutionError((prev) => {
-      const next = new Map(prev);
-      next.delete(index);
-      return next;
-    });
-  }
-
-  async function resolveGuardianAddress(index: number, address: string) {
-    if (!isFederatedAddress(address)) {
+    const id = stableGuardianIds.get(index);
+    if (id) {
       setResolvedGuardians((prev) => {
         const next = new Map(prev);
-        next.delete(index);
+        next.delete(id);
         return next;
       });
       setGuardianResolutionError((prev) => {
         const next = new Map(prev);
-        next.delete(index);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
+
+  async function resolveGuardianAddress(index: number, address: string) {
+    const id = stableGuardianIds.get(index);
+    if (!id) return;
+
+    if (!isFederatedAddress(address)) {
+      setResolvedGuardians((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+      setGuardianResolutionError((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
         return next;
       });
       return;
     }
 
-    setResolvingGuardianIndex(index);
+    setResolvingGuardianId(id);
     try {
       const resolved = await resolveFederatedAddress(address);
-      setResolvedGuardians((prev) => new Map(prev).set(index, resolved));
+      setResolvedGuardians((prev) => new Map(prev).set(id, resolved));
       setGuardianResolutionError((prev) => {
         const next = new Map(prev);
-        next.delete(index);
+        next.delete(id);
         return next;
       });
     } catch (err) {
       setGuardianResolutionError(
         (prev) =>
           new Map(prev).set(
-            index,
+            id,
             err instanceof Error ? err.message : 'Failed to resolve address',
           ),
       );
       setResolvedGuardians((prev) => {
         const next = new Map(prev);
-        next.delete(index);
+        next.delete(id);
         return next;
       });
     } finally {
-      setResolvingGuardianIndex(null);
+      setResolvingGuardianId(null);
     }
   }
 
@@ -523,9 +541,10 @@ export default function NewWillPage() {
               Any 2 of your guardians can force an early release if you&apos;re incapacitated.
             </p>
 
-            {guardians.map((guardian, index) => (
-              <div key={index} className="space-y-2">
-              <div key={index} className="space-y-1">
+            {guardians.map((guardian, index) => {
+              const guardianId = stableGuardianIds.get(index) || '';
+              return (
+              <div key={guardianId} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <label htmlFor={`guardian-${index}`} className="sr-only">
                     Guardian {index + 1} address
@@ -536,19 +555,6 @@ export default function NewWillPage() {
                     value={guardian}
                     onChange={(event) => updateGuardian(index, event.target.value)}
                     placeholder="Guardian address (G...) or federated address (name*domain.com)"
-                    className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
-                  />
-                  {isFederatedAddress(guardian) && (
-                    <button
-                      type="button"
-                      onClick={() => resolveGuardianAddress(index, guardian)}
-                      disabled={resolvingGuardianIndex === index}
-                      className="whitespace-nowrap rounded-lg border border-white/20 px-3 py-2 text-xs font-medium text-will-light/70 transition hover:border-will-purple hover:text-will-light disabled:opacity-40"
-                    >
-                      {resolvingGuardianIndex === index ? 'Resolving…' : 'Resolve'}
-                    </button>
-                  )}
-                    placeholder="Guardian address (G...)"
                     aria-describedby={guardianRowErrors[index] ? `guardian-error-${index}` : undefined}
                     aria-invalid={guardianRowErrors[index] ? 'true' : undefined}
                     className={`min-w-0 flex-1 rounded-lg border px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:outline-none ${
@@ -559,6 +565,16 @@ export default function NewWillPage() {
                         : 'border-white/10 bg-white/5 focus:border-will-purple'
                     }`}
                   />
+                  {isFederatedAddress(guardian) && (
+                    <button
+                      type="button"
+                      onClick={() => resolveGuardianAddress(index, guardian)}
+                      disabled={resolvingGuardianId === guardianId}
+                      className="whitespace-nowrap rounded-lg border border-white/20 px-3 py-2 text-xs font-medium text-will-light/70 transition hover:border-will-purple hover:text-will-light disabled:opacity-40"
+                    >
+                      {resolvingGuardianId === guardianId ? 'Resolving…' : 'Resolve'}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeGuardian(index)}
@@ -568,15 +584,15 @@ export default function NewWillPage() {
                     ✕
                   </button>
                 </div>
-                {resolvedGuardians.has(index) && (
+                {resolvedGuardians.has(guardianId) && (
                   <div className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-2">
                     <p className="text-xs text-emerald-400">Resolved address:</p>
-                    <p className="font-mono text-xs text-emerald-300">{resolvedGuardians.get(index)}</p>
+                    <p className="font-mono text-xs text-emerald-300">{resolvedGuardians.get(guardianId)}</p>
                   </div>
                 )}
-                {guardianResolutionError.has(index) && (
+                {guardianResolutionError.has(guardianId) && (
                   <div className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2">
-                    <p className="text-xs text-red-400">{guardianResolutionError.get(index)}</p>
+                    <p className="text-xs text-red-400">{guardianResolutionError.get(guardianId)}</p>
                   </div>
                 )}
                 {/* Per-row validation errors */}
@@ -592,7 +608,8 @@ export default function NewWillPage() {
                   </p>
                 ) : null}
               </div>
-            ))}
+            );
+            })}
 
             {/* Summary warning when blank rows exist alongside valid rows */}
             {blankGuardianIndices.length > 0 && guardians.some((g) => g.trim() !== '') ? (
