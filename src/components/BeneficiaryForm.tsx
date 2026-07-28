@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 import type { Beneficiary } from '@sorowill/sdk';
 
@@ -51,65 +51,84 @@ export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {
   const validationMessage = getBeneficiaryValidationMessage(value);
   const isValid = validationMessage === null;
 
-  const [resolvedAddresses, setResolvedAddresses] = useState<Map<number, string>>(new Map());
-  const [resolvingIndex, setResolvingIndex] = useState<number | null>(null);
-  const [resolutionError, setResolutionError] = useState<Map<number, string>>(new Map());
+  const [beneficiaryIds, setBeneficiaryIds] = useState<Map<number, string>>(new Map());
+
+  const stableBeneficiaryIds = useMemo(() => {
+    const newIds = new Map(beneficiaryIds);
+    value.forEach((_, index) => {
+      if (!newIds.has(index)) {
+        newIds.set(index, crypto.randomUUID());
+      }
+    });
+    setBeneficiaryIds(newIds);
+    return newIds;
+  }, [value.length]);
+
+  const [resolvedAddresses, setResolvedAddresses] = useState<Map<string, string>>(new Map());
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [resolutionError, setResolutionError] = useState<Map<string, string>>(new Map());
 
   function updateRow(index: number, patch: Partial<Beneficiary>) {
     onChange(value.map((row, i) => (i === index ? { ...row, ...patch } : row)));
     if (patch.address !== undefined) {
-      setResolvedAddresses((prev) => {
-        const next = new Map(prev);
-        next.delete(index);
-        return next;
-      });
-      setResolutionError((prev) => {
-        const next = new Map(prev);
-        next.delete(index);
-        return next;
-      });
+      const id = stableBeneficiaryIds.get(index);
+      if (id) {
+        setResolvedAddresses((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+        setResolutionError((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+      }
     }
   }
 
   async function resolveBeneficiaryAddress(index: number, address: string) {
+    const id = stableBeneficiaryIds.get(index);
+    if (!id) return;
+
     if (!isFederatedAddress(address)) {
       setResolvedAddresses((prev) => {
         const next = new Map(prev);
-        next.delete(index);
+        next.delete(id);
         return next;
       });
       setResolutionError((prev) => {
         const next = new Map(prev);
-        next.delete(index);
+        next.delete(id);
         return next;
       });
       return;
     }
 
-    setResolvingIndex(index);
+    setResolvingId(id);
     try {
       const resolved = await resolveFederatedAddress(address);
-      setResolvedAddresses((prev) => new Map(prev).set(index, resolved));
+      setResolvedAddresses((prev) => new Map(prev).set(id, resolved));
       setResolutionError((prev) => {
         const next = new Map(prev);
-        next.delete(index);
+        next.delete(id);
         return next;
       });
     } catch (error) {
       setResolutionError(
         (prev) =>
           new Map(prev).set(
-            index,
+            id,
             error instanceof Error ? error.message : 'Failed to resolve address',
           ),
       );
       setResolvedAddresses((prev) => {
         const next = new Map(prev);
-        next.delete(index);
+        next.delete(id);
         return next;
       });
     } finally {
-      setResolvingIndex(null);
+      setResolvingId(null);
     }
   }
 
@@ -142,8 +161,10 @@ export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {
       </div>
 
       <div className="space-y-2" role="group" aria-label="Beneficiary list">
-        {value.map((beneficiary, index) => (
-          <div key={index} className="space-y-2">
+        {value.map((beneficiary, index) => {
+          const beneficiaryId = stableBeneficiaryIds.get(index) || '';
+          return (
+          <div key={beneficiaryId} className="space-y-2">
             <div className="flex items-end gap-2">
               <div className="min-w-0 flex-1">
                 <label htmlFor={`beneficiary-address-${index}`} className="sr-only">
@@ -162,13 +183,12 @@ export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {
                 <button
                   type="button"
                   onClick={() => resolveBeneficiaryAddress(index, beneficiary.address)}
-                  disabled={resolvingIndex === index}
+                  disabled={resolvingId === beneficiaryId}
                   className="whitespace-nowrap rounded-lg border border-white/20 px-3 py-2 text-xs font-medium text-will-light/70 transition hover:border-will-purple hover:text-will-light disabled:opacity-40"
                 >
-                  {resolvingIndex === index ? 'Resolving…' : 'Resolve'}
+                  {resolvingId === beneficiaryId ? 'Resolving…' : 'Resolve'}
                 </button>
               )}
-            </div>
               <div className="flex items-end gap-1">
                 <div>
                   <label htmlFor={`beneficiary-percentage-${index}`} className="sr-only">
@@ -197,19 +217,20 @@ export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {
                 ✕
               </button>
             </div>
-            {resolvedAddresses.has(index) && (
+            {resolvedAddresses.has(beneficiaryId) && (
               <div className="ml-1 rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-2">
                 <p className="text-xs text-emerald-400">Resolved address:</p>
-                <p className="font-mono text-xs text-emerald-300">{resolvedAddresses.get(index)}</p>
+                <p className="font-mono text-xs text-emerald-300">{resolvedAddresses.get(beneficiaryId)}</p>
               </div>
             )}
-            {resolutionError.has(index) && (
+            {resolutionError.has(beneficiaryId) && (
               <div className="ml-1 rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2">
-                <p className="text-xs text-red-400">{resolutionError.get(index)}</p>
+                <p className="text-xs text-red-400">{resolutionError.get(beneficiaryId)}</p>
               </div>
             )}
           </div>
-        ))}
+        );
+        })}
       </div>
 
       <button
