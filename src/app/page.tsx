@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Footer } from '@/components/Footer';
 
 const STEPS = [
   {
@@ -91,20 +92,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="flex flex-col items-center gap-2 border-t border-white/10 pt-8 text-center text-sm text-will-light/50">
-        <p>SoroWill, built on Stellar</p>
-        <div className="flex items-center gap-4">
-          <span>MIT License</span>
-          <a
-            href="https://github.com/SoroWill/sorowill-app"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-will-light"
-          >
-            GitHub
-          </a>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
