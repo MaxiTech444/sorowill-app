@@ -13,7 +13,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
-    "test:reminders": "tsx src/lib/reminders.test.ts"
+    "test:reminders": "tsx src/lib/reminders.test.ts",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts"
   },
   "dependencies": {
@@ -44,8 +44,8 @@
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.1",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.1",
-    "tsx": "^4.23.1"
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "vitest": "^3.2.1"
   },
   "engines": {
