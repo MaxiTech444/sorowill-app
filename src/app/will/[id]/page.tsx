@@ -54,6 +54,19 @@ function getGuardianVoteErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Guardian vote failed';
 }
 
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export default function WillDetailPage() {
   const toast = useToast();
   const router = useRouter();
@@ -68,6 +81,8 @@ export default function WillDetailPage() {
   const [castingVoteId, setCastingVoteId] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [exportingCertificate, setExportingCertificate] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('');
@@ -85,6 +100,7 @@ export default function WillDetailPage() {
       const fetched = await getSoroWillClient().getWill(willId);
       setWill(fetched);
       setDraftBeneficiaries(fetched.beneficiaries);
+      setLastFetchTime(new Date());
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load will');
@@ -92,6 +108,24 @@ export default function WillDetailPage() {
       setLoading(false);
     }
   }, [willId]);
+
+  const handleManualRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const fetched = await getSoroWillClient().getWill(willId);
+      setWill(fetched);
+      setDraftBeneficiaries(fetched.beneficiaries);
+      setLastFetchTime(new Date());
+      setError(null);
+      toast.success('Data refreshed');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to refresh data';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [willId, toast]);
 
   useEffect(() => {
     safeGetPublicKey().then(setPublicKey);
@@ -222,14 +256,29 @@ export default function WillDetailPage() {
           <h1 className="text-2xl font-bold text-will-light print-title">Will #{will.id}</h1>
           <p className="text-sm text-will-light/50 print-text">Owner: {truncateAddress(will.owner)}</p>
         </div>
-        <button
-          type="button"
-          onClick={handleExportCertificate}
-          disabled={exportingCertificate}
-          className="print-hide rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {exportingCertificate ? 'Generating…' : 'Export Certificate (PDF)'}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="print-hide rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
+            title="Refresh on-chain data"
+          >
+            {isRefreshing ? 'Refreshing…' : '↻ Refresh'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCertificate}
+            disabled={exportingCertificate}
+            className="print-hide rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {exportingCertificate ? 'Generating…' : 'Export Certificate (PDF)'}
+          </button>
+        </div>
+      </div>
+
+      <div className="print-hide flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-will-light/60">
+        <span>Last updated {formatTimeAgo(lastFetchTime)}</span>
       </div>
 
       <StatusBanner status={will.status} />

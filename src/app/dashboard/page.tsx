@@ -26,6 +26,19 @@ type StatusFilter = 'all' | WillStatus;
 
 const STATUS_FILTERS: StatusFilter[] = ['all', WillStatus.Active, WillStatus.Triggered, WillStatus.Released, WillStatus.Cancelled];
 
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 function matchesSearch(will: Will, query: string): boolean {
   const normalized = query.trim().toLowerCase();
   if (!normalized) {
@@ -62,6 +75,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Batch top-up state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -85,12 +100,38 @@ export default function DashboardPage() {
       setOwnedWills(owned);
       setInheritingWills(inheriting);
       setGuardianWills(guardian);
+      setLastFetchTime(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load wills');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleManualRefresh = useCallback(async () => {
+    if (!publicKey) return;
+    setIsRefreshing(true);
+    try {
+      const client = getSoroWillClient();
+      const [owned, inheriting, guardian] = await Promise.all([
+        client.getWillsByOwner(publicKey),
+        client.getWillsByBeneficiary(publicKey),
+        getWillsByGuardian(publicKey),
+      ]);
+      setOwnedWills(owned);
+      setInheritingWills(inheriting);
+      setGuardianWills(guardian);
+      setLastFetchTime(new Date());
+      setError(null);
+      toast.success('Data refreshed');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to refresh data';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [publicKey, toast]);
 
   useEffect(() => {
     safeGetPublicKey().then((key) => {
@@ -259,12 +300,27 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <h1 className="text-2xl font-bold text-will-light">Dashboard</h1>
-        <Link
-          href="/will/new"
-          className="w-full rounded-full bg-will-purple px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-will-purple/90 sm:w-auto"
-        >
-          + New Will
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light disabled:cursor-not-allowed disabled:opacity-60"
+            title="Refresh data"
+          >
+            {isRefreshing ? 'Refreshing…' : '↻ Refresh'}
+          </button>
+          <Link
+            href="/will/new"
+            className="w-full rounded-full bg-will-purple px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-will-purple/90 sm:w-auto"
+          >
+            + New Will
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-will-light/60">
+        <span>Last updated {formatTimeAgo(lastFetchTime)}</span>
       </div>
 
       <div className="flex gap-1 rounded-full border border-white/10 bg-white/5 p-1" role="tablist">
