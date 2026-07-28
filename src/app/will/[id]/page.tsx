@@ -280,7 +280,17 @@ export default function WillDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-3 print-section">
         <div>
           <h1 className="text-2xl font-bold text-will-light print-title">Will #{will.id}</h1>
-          <p className="text-sm text-will-light/50 print-text">Owner: {truncateAddress(will.owner)}</p>
+          <p className="text-sm text-will-light/50 print-text">
+            Owner:{' '}
+            <a
+              href={stellarExpertUrl('account', will.owner)}
+              target="_blank"
+              rel="noreferrer"
+              className="font-mono text-will-purple hover:underline"
+            >
+              {truncateAddress(will.owner)}
+            </a>
+          </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
@@ -571,7 +581,16 @@ export default function WillDetailPage() {
           <tbody>
             {shares.map((row) => (
               <tr key={row.address} className="border-t border-white/5">
-                <td className="py-2 font-mono text-will-light">{truncateAddress(row.address)}</td>
+                <td className="py-2 font-mono text-will-light">
+                  <a
+                    href={stellarExpertUrl('account', row.address)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-will-purple hover:underline"
+                  >
+                    {truncateAddress(row.address)}
+                  </a>
+                </td>
                 <td className="py-2 text-will-light/70">{beneficiaryMap.get(row.address)}%</td>
                 <td className="py-2 text-will-light">{formatUSDC(BigInt(row.share))} USDC</td>
               </tr>
