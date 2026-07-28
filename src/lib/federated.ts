@@ -1,0 +1,63 @@
+const STELLAR_TOML_CACHE = new Map<string, string>();
+
+export async function resolveFederatedAddress(address: string): Promise<string> {
+  if (!address.includes('*')) {
+    return address;
+  }
+
+  const [name, domain] = address.split('*');
+
+  try {
+    let stellarToml = STELLAR_TOML_CACHE.get(domain);
+
+    if (!stellarToml) {
+      const tomlResponse = await fetch(`https://${domain}/.well-known/stellar.toml`);
+      if (!tomlResponse.ok) {
+        throw new Error(`Failed to fetch stellar.toml from ${domain}`);
+      }
+      stellarToml = await tomlResponse.text();
+      STELLAR_TOML_CACHE.set(domain, stellarToml);
+    }
+
+    const federationServerLine = stellarToml
+      .split('\n')
+      .find((line) => line.startsWith('FEDERATION_SERVER'));
+
+    if (!federationServerLine) {
+      throw new Error(`No FEDERATION_SERVER found in ${domain}/.well-known/stellar.toml`);
+    }
+
+    const federationUrl = federationServerLine.split('=')[1]?.trim().replace(/["']/g, '');
+
+    if (!federationUrl) {
+      throw new Error('Invalid FEDERATION_SERVER URL');
+    }
+
+    const params = new URLSearchParams({
+      q: `${name}*${domain}`,
+      type: 'name',
+    });
+
+    const response = await fetch(`${federationUrl}?${params}`);
+
+    if (!response.ok) {
+      throw new Error(`Federation server returned status ${response.status}`);
+    }
+
+    const data = (await response.json()) as { account_id?: string };
+
+    if (!data.account_id) {
+      throw new Error('No account_id in federation response');
+    }
+
+    return data.account_id;
+  } catch (error) {
+    throw new Error(
+      `Failed to resolve federated address "${address}": ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
+  }
+}
+
+export function isFederatedAddress(address: string): boolean {
+  return address.includes('*');
+}

@@ -24,6 +24,24 @@ fix/N-short-description
 - Test the affected page in a real browser with Freighter installed where the change touches wallet or transaction flows.
 - Keep the dark purple theme (`will-purple`, `will-dark`, `will-light`) consistent with the rest of the app.
 
+## Design tokens
+
+The app uses a compact palette of custom color tokens defined in `tailwind.config.ts`. Use these instead of hardcoded hex values so the theme stays consistent across every view:
+
+| Token          | Hex       | Intended usage                                         |
+|----------------|-----------|--------------------------------------------------------|
+| `will-purple`  | `#4F46E5` | Primary action color — buttons, links, active states, progress bars |
+| `will-dark`    | `#1E1B4B` | Page & header backgrounds (the deep purple brand base) |
+| `will-light`   | `#EEF2FF` | Primary text color — headings, body copy, form labels  |
+
+Opacity modifiers (e.g. `text-will-light/60`) are used for secondary/de-emphasised text; borders and dividers use `border-white/10` or `border-white/20` throughout.
+
+## Environment variables: public-by-design
+
+All three `NEXT_PUBLIC_*` variables that this app reads (`NEXT_PUBLIC_STELLAR_NETWORK`, `NEXT_PUBLIC_CONTRACT_ID`, `NEXT_PUBLIC_RPC_URL`) are **intentionally public** — they describe the on-chain environment, not a secret. This is correct, because Next.js bundles every `NEXT_PUBLIC_*` variable into the client-side JavaScript sent to the browser.
+
+⚠️ **Never prefix a genuinely sensitive value with `NEXT_PUBLIC_`.** If the app ever needs a server-side secret (an API key, a paid RPC provider auth token, a webhook signing secret, etc.), store it in a plain (non-`NEXT_PUBLIC_`) environment variable and consume it only inside Route Handlers, Server Components, or `getServerSideProps` / server actions. Those values stay on the server and are never exposed to the browser.
+
 ## Local setup
 
 See the [README](./README.md#local-setup) for installation and environment configuration.

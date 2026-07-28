@@ -5,14 +5,75 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '@sorowill/sdk';
 
-import { truncateAddress } from '@/lib/freighter';
+import { truncateAddress, safeGetPublicKey } from '@/lib/freighter';
+import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
+import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
+import { getUserBalance } from '@/lib/balance';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 
 const CHECKIN_OPTIONS = [30, 60, 90, 180, 365];
 const GRACE_OPTIONS = [3, 7, 14];
 
 const STEP_LABELS = ['Amount', 'Beneficiaries', 'Timing', 'Guardians', 'Review'];
+const STORAGE_KEY = 'sorowill-form-draft';
+
+interface FormState {
+  step: number;
+  token: string;
+  amount: string;
+  beneficiaries: Beneficiary[];
+  checkinPeriodDays: number;
+  gracePeriodDays: number;
+  guardians: string[];
+}
+
+/** True when `address` is a well-formed Stellar ED25519 public key. */
+function isValidStellarAddress(address: string): boolean {
+  return /^G[A-Z2-7]{55}$/.test(address);
+}
+
+/** Validate the guardian list, returning an array of per-row error messages
+ *  (empty string = no error for that row) plus an optional top-level error. */
+function validateGuardians(
+  guardians: string[],
+  ownerAddress: string | null,
+): { rowErrors: string[]; topError: string | null } {
+  const rowErrors: string[] = guardians.map(() => '');
+  let topError: string | null = null;
+
+  const seen = new Set<string>();
+
+  for (let i = 0; i < guardians.length; i++) {
+    const g = guardians[i].trim();
+    if (g === '') continue; // blank rows are warned separately
+
+    if (!isValidStellarAddress(g)) {
+      rowErrors[i] = 'Not a valid Stellar address (must start with G and be 56 characters)';
+      continue;
+    }
+
+    if (ownerAddress && g === ownerAddress) {
+      rowErrors[i] = 'A guardian cannot be the same as the will owner';
+      continue;
+    }
+
+    if (seen.has(g)) {
+      rowErrors[i] = 'Duplicate guardian address';
+      continue;
+    }
+
+    seen.add(g);
+  }
+
+  // Top-level error when any non-blank row has an issue.
+  const hasRowErrors = rowErrors.some((e, i) => e !== '' && guardians[i].trim() !== '');
+  if (hasRowErrors) {
+    topError = 'Please fix the guardian address errors above before continuing.';
+  }
+
+  return { rowErrors, topError };
+}
 
 export default function NewWillPage() {
   const router = useRouter();
@@ -27,9 +88,58 @@ export default function NewWillPage() {
   const [gracePeriodDays, setGracePeriodDays] = useState(7);
   const [guardians, setGuardians] = useState<string[]>([]);
   const [cloneLoading, setCloneLoading] = useState(false);
+  const [resumeAvailable, setResumeAvailable] = useState(false);
+
+  const [resolvedGuardians, setResolvedGuardians] = useState<Map<number, string>>(new Map());
+  const [resolvingGuardianIndex, setResolvingGuardianIndex] = useState<number | null>(null);
+  const [guardianResolutionError, setGuardianResolutionError] = useState<Map<number, string>>(
+    new Map(),
+  );
+
+  const [walletBalance, setWalletBalance] = useState<string | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+
+  const [ownerAddress, setOwnerAddress] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch the connected wallet address once so we can reject it as a guardian.
+  useEffect(() => {
+    safeGetPublicKey().then(setOwnerAddress);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const draft = localStorage.getItem(STORAGE_KEY);
+      if (draft && !cloneFromId) {
+        try {
+          setResumeAvailable(true);
+        } catch {
+          setResumeAvailable(false);
+        }
+      }
+    }
+  }, [cloneFromId]);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        setLoadingBalance(true);
+        const publicKey = await safeGetPublicKey();
+        if (publicKey) {
+          const balance = await getUserBalance(publicKey);
+          setWalletBalance(balance);
+        }
+      } catch {
+        setWalletBalance(null);
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+
+    fetchBalance();
+  }, []);
 
   useEffect(() => {
     if (cloneFromId) {
@@ -51,13 +161,117 @@ export default function NewWillPage() {
     }
   }, [cloneFromId]);
 
+  useEffect(() => {
+    const state: FormState = {
+      step,
+      token,
+      amount,
+      beneficiaries,
+      checkinPeriodDays,
+      gracePeriodDays,
+      guardians,
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+  }, [step, token, amount, beneficiaries, checkinPeriodDays, gracePeriodDays, guardians]);
+
+  function resumeDraft() {
+    if (typeof window !== 'undefined') {
+      const draft = localStorage.getItem(STORAGE_KEY);
+      if (draft) {
+        try {
+          const state: FormState = JSON.parse(draft);
+          setStep(state.step);
+          setToken(state.token);
+          setAmount(state.amount);
+          setBeneficiaries(state.beneficiaries);
+          setCheckinPeriodDays(state.checkinPeriodDays);
+          setGracePeriodDays(state.gracePeriodDays);
+          setGuardians(state.guardians);
+          setResumeAvailable(false);
+        } catch {
+          setError('Failed to resume draft');
+        }
+      }
+    }
+  }
+
+  function setMaxAmount() {
+    if (walletBalance) {
+      setAmount(walletBalance);
+    }
+  }
+
   const amountValid = amount.trim() !== '' && Number(amount) > 0 && token.trim() !== '';
   const beneficiariesValid = validateBeneficiaries(beneficiaries) && beneficiaries.every((b) => b.address.trim() !== '');
 
-  const canGoNext = [amountValid, beneficiariesValid, true, true, true][step];
+  const { rowErrors: guardianRowErrors, topError: guardianTopError } = validateGuardians(guardians, ownerAddress);
+  // Step 3 is valid when there are no row-level errors (blank rows are a
+  // warning, not a blocking error — the user sees the warning and can proceed).
+  const guardiansValid = guardianTopError === null;
+
+  const canGoNext = [amountValid, beneficiariesValid, true, guardiansValid, true][step];
+
+  // Rows that are blank — the user will see a warning that they'll be dropped.
+  const blankGuardianIndices = guardians
+    .map((g, i) => (g.trim() === '' ? i : -1))
+    .filter((i) => i !== -1);
 
   function updateGuardian(index: number, address: string) {
     setGuardians((prev) => prev.map((g, i) => (i === index ? address : g)));
+    setResolvedGuardians((prev) => {
+      const next = new Map(prev);
+      next.delete(index);
+      return next;
+    });
+    setGuardianResolutionError((prev) => {
+      const next = new Map(prev);
+      next.delete(index);
+      return next;
+    });
+  }
+
+  async function resolveGuardianAddress(index: number, address: string) {
+    if (!isFederatedAddress(address)) {
+      setResolvedGuardians((prev) => {
+        const next = new Map(prev);
+        next.delete(index);
+        return next;
+      });
+      setGuardianResolutionError((prev) => {
+        const next = new Map(prev);
+        next.delete(index);
+        return next;
+      });
+      return;
+    }
+
+    setResolvingGuardianIndex(index);
+    try {
+      const resolved = await resolveFederatedAddress(address);
+      setResolvedGuardians((prev) => new Map(prev).set(index, resolved));
+      setGuardianResolutionError((prev) => {
+        const next = new Map(prev);
+        next.delete(index);
+        return next;
+      });
+    } catch (err) {
+      setGuardianResolutionError(
+        (prev) =>
+          new Map(prev).set(
+            index,
+            err instanceof Error ? err.message : 'Failed to resolve address',
+          ),
+      );
+      setResolvedGuardians((prev) => {
+        const next = new Map(prev);
+        next.delete(index);
+        return next;
+      });
+    } finally {
+      setResolvingGuardianIndex(null);
+    }
   }
 
   function addGuardian() {
@@ -83,6 +297,9 @@ export default function NewWillPage() {
         gracePeriodDays,
         guardians: guardians.filter((g) => g.trim() !== ''),
       });
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY);
+      }
       router.push(`/will/${willId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create will');
@@ -107,6 +324,24 @@ export default function NewWillPage() {
           ))}
         </div>
       </div>
+
+      {resumeAvailable && (
+        <div className="rounded-xl border border-will-purple/40 bg-will-purple/10 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-will-light">Draft found</p>
+              <p className="text-xs text-will-light/60">You have an unsaved form in progress</p>
+            </div>
+            <button
+              type="button"
+              onClick={resumeDraft}
+              className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90"
+            >
+              Resume
+            </button>
+          </div>
+        </div>
+      )}
 
       {cloneLoading && (
         <div className="rounded-xl border border-white/10 bg-white/5 p-6">
@@ -133,20 +368,38 @@ export default function NewWillPage() {
               />
             </div>
             <div>
-              <label htmlFor="amount" className="text-sm font-medium text-will-light">
-                Amount (USDC)
-              </label>
-              <input
-                id="amount"
-                type="number"
-                min={0}
-                step="0.01"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder="1000.00"
-                className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
-                aria-describedby="amount-help"
-              />
+              <div className="flex items-center justify-between">
+                <label htmlFor="amount" className="text-sm font-medium text-will-light">
+                  Amount (USDC)
+                </label>
+                {walletBalance && (
+                  <div className="text-xs text-will-light/60">
+                    Balance: {loadingBalance ? '...' : walletBalance}
+                  </div>
+                )}
+              </div>
+              <div className="relative mt-1 flex items-center">
+                <input
+                  id="amount"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  placeholder="1000.00"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                  aria-describedby="amount-help"
+                />
+                {walletBalance && (
+                  <button
+                    type="button"
+                    onClick={setMaxAmount}
+                    className="absolute right-2 rounded px-2 py-1 text-xs font-medium text-will-purple hover:bg-white/5"
+                  >
+                    Max
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ) : null}
@@ -215,29 +468,86 @@ export default function NewWillPage() {
             <p className="text-xs text-will-light/50">
               Any 2 of your guardians can force an early release if you&apos;re incapacitated.
             </p>
+
             {guardians.map((guardian, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <label htmlFor={`guardian-${index}`} className="sr-only">
-                  Guardian {index + 1} address
-                </label>
-                <input
-                  id={`guardian-${index}`}
-                  type="text"
-                  value={guardian}
-                  onChange={(event) => updateGuardian(index, event.target.value)}
-                  placeholder="Guardian address (G...)"
-                  className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeGuardian(index)}
-                  aria-label={`Remove guardian ${index + 1}`}
-                  className="rounded-lg border border-white/10 px-2 py-2 text-will-light/60 transition hover:border-red-400/40 hover:text-red-400"
-                >
-                  ✕
-                </button>
+              <div key={index} className="space-y-2">
+              <div key={index} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <label htmlFor={`guardian-${index}`} className="sr-only">
+                    Guardian {index + 1} address
+                  </label>
+                  <input
+                    id={`guardian-${index}`}
+                    type="text"
+                    value={guardian}
+                    onChange={(event) => updateGuardian(index, event.target.value)}
+                    placeholder="Guardian address (G...) or federated address (name*domain.com)"
+                    className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
+                  />
+                  {isFederatedAddress(guardian) && (
+                    <button
+                      type="button"
+                      onClick={() => resolveGuardianAddress(index, guardian)}
+                      disabled={resolvingGuardianIndex === index}
+                      className="whitespace-nowrap rounded-lg border border-white/20 px-3 py-2 text-xs font-medium text-will-light/70 transition hover:border-will-purple hover:text-will-light disabled:opacity-40"
+                    >
+                      {resolvingGuardianIndex === index ? 'Resolving…' : 'Resolve'}
+                    </button>
+                  )}
+                    placeholder="Guardian address (G...)"
+                    aria-describedby={guardianRowErrors[index] ? `guardian-error-${index}` : undefined}
+                    aria-invalid={guardianRowErrors[index] ? 'true' : undefined}
+                    className={`min-w-0 flex-1 rounded-lg border px-3 py-2 font-mono text-sm text-will-light placeholder:text-will-light/40 focus:outline-none ${
+                      guardianRowErrors[index]
+                        ? 'border-red-400/60 bg-red-500/5 focus:border-red-400'
+                        : guardian.trim() === '' && guardians.length > 0
+                        ? 'border-amber-400/40 bg-white/5 focus:border-will-purple'
+                        : 'border-white/10 bg-white/5 focus:border-will-purple'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeGuardian(index)}
+                    aria-label={`Remove guardian ${index + 1}`}
+                    className="rounded-lg border border-white/10 px-2 py-2 text-will-light/60 transition hover:border-red-400/40 hover:text-red-400"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {resolvedGuardians.has(index) && (
+                  <div className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-2">
+                    <p className="text-xs text-emerald-400">Resolved address:</p>
+                    <p className="font-mono text-xs text-emerald-300">{resolvedGuardians.get(index)}</p>
+                  </div>
+                )}
+                {guardianResolutionError.has(index) && (
+                  <div className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2">
+                    <p className="text-xs text-red-400">{guardianResolutionError.get(index)}</p>
+                  </div>
+                )}
+                {/* Per-row validation errors */}
+                {guardianRowErrors[index] ? (
+                  <p id={`guardian-error-${index}`} className="text-xs text-red-400" role="alert">
+                    {guardianRowErrors[index]}
+                  </p>
+                ) : null}
+                {/* Blank-row warning — shown only when there are no other errors for this row */}
+                {!guardianRowErrors[index] && guardian.trim() === '' ? (
+                  <p className="text-xs text-amber-400/80">
+                    This empty row will be excluded when the will is submitted.
+                  </p>
+                ) : null}
               </div>
             ))}
+
+            {/* Summary warning when blank rows exist alongside valid rows */}
+            {blankGuardianIndices.length > 0 && guardians.some((g) => g.trim() !== '') ? (
+              <p className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
+                {blankGuardianIndices.length === 1
+                  ? '1 empty guardian row will not be included in the will.'
+                  : `${blankGuardianIndices.length} empty guardian rows will not be included in the will.`}
+              </p>
+            ) : null}
           </fieldset>
         ) : null}
 
@@ -270,15 +580,17 @@ export default function NewWillPage() {
                   ))}
                 </dd>
               </div>
-              {guardians.length > 0 ? (
+              {guardians.filter((g) => g.trim() !== '').length > 0 ? (
                 <div>
                   <dt className="mb-1 text-will-light/60">Guardians</dt>
                   <dd className="space-y-1">
-                    {guardians.map((g, i) => (
-                      <div key={i} className="font-mono text-xs text-will-light">
-                        {g ? truncateAddress(g) : '—'}
-                      </div>
-                    ))}
+                    {guardians
+                      .filter((g) => g.trim() !== '')
+                      .map((g, i) => (
+                        <div key={i} className="font-mono text-xs text-will-light">
+                          {truncateAddress(g)}
+                        </div>
+                      ))}
                   </dd>
                 </div>
               ) : null}
