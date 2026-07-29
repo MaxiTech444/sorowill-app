@@ -237,6 +237,32 @@ export default function NewWillPage() {
     .map((g, i) => (g.trim() === '' ? i : -1))
     .filter((i) => i !== -1);
 
+  const guardianBeneficiaryOverlap = useMemo(() => {
+    const beneficiaryAddresses = new Set(
+      beneficiaries.map((b) => b.address.trim()).filter((a) => a !== ''),
+    );
+    if (beneficiaryAddresses.size === 0) return [];
+
+    const overlapped = new Set<string>();
+    guardians.forEach((g, i) => {
+      const trimmed = g.trim();
+      if (trimmed === '') return;
+
+      if (beneficiaryAddresses.has(trimmed)) {
+        overlapped.add(trimmed);
+        return;
+      }
+
+      const id = stableGuardianIds.get(i);
+      const resolved = id ? resolvedGuardians.get(id) : undefined;
+      if (resolved && beneficiaryAddresses.has(resolved)) {
+        overlapped.add(trimmed);
+      }
+    });
+
+    return [...overlapped];
+  }, [guardians, beneficiaries, resolvedGuardians, stableGuardianIds]);
+
   function updateGuardian(index: number, address: string) {
     setGuardians((prev) => prev.map((g, i) => (i === index ? address : g)));
     const id = stableGuardianIds.get(index);
@@ -619,6 +645,14 @@ export default function NewWillPage() {
                   : `${blankGuardianIndices.length} empty guardian rows will not be included in the will.`}
               </p>
             ) : null}
+
+            {guardianBeneficiaryOverlap.length > 0 ? (
+              <p className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
+                {guardianBeneficiaryOverlap.length === 1
+                  ? '1 guardian is also listed as a beneficiary — this changes who can vote to trigger an early release of funds they themselves stand to receive.'
+                  : `${guardianBeneficiaryOverlap.length} guardians are also listed as beneficiaries — this changes who can vote to trigger an early release of funds they themselves stand to receive.`}
+              </p>
+            ) : null}
           </fieldset>
         ) : null}
 
@@ -663,6 +697,16 @@ export default function NewWillPage() {
                         </div>
                       ))}
                   </dd>
+                  <p className="mt-2 text-xs text-will-light/50">
+                    Any 2 of your guardians can force an early release if you&apos;re incapacitated.
+                  </p>
+                  {guardianBeneficiaryOverlap.length > 0 ? (
+                    <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
+                      {guardianBeneficiaryOverlap.length === 1
+                        ? '1 guardian is also listed as a beneficiary — this changes who can vote to trigger an early release of funds they themselves stand to receive.'
+                        : `${guardianBeneficiaryOverlap.length} guardians are also listed as beneficiaries — this changes who can vote to trigger an early release of funds they themselves stand to receive.`}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </dl>
