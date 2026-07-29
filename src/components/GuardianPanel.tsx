@@ -7,6 +7,7 @@ export interface GuardianPanelProps {
   guardians: string[];
   guardianVotes: number;
   willId?: string;
+  isOwner?: boolean;
   isGuardian?: boolean;
   isActive?: boolean;
   isCastingVote?: boolean;
@@ -18,6 +19,7 @@ export function GuardianPanel({
   guardians,
   guardianVotes,
   willId,
+  isOwner = false,
   isGuardian = false,
   isActive = false,
   isCastingVote = false,
@@ -51,6 +53,8 @@ export function GuardianPanel({
       console.error('Failed to copy invite link', err);
     }
   };
+
+  const hasEnoughGuardians = guardians.length >= GUARDIAN_THRESHOLD;
 
   return (
     <section className="rounded-xl border border-white/10 bg-white/5 p-4" aria-labelledby="guardians-heading">
@@ -109,7 +113,14 @@ export function GuardianPanel({
       ) : null}
       {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
       <p className="mt-2 text-xs text-will-light/50">
-        Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.
+        {hasEnoughGuardians ? (
+          <>Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.</>
+        ) : (
+          <>
+            <span className="font-medium text-amber-400">Guardian quorum can never be reached</span> with the current guardian count.{' '}
+            {guardians.length} guardian{guardians.length === 1 ? '' : 's'} configured; this will needs at least {GUARDIAN_THRESHOLD} guardians to enable early release.
+          </>
+        )}
       </p>
     </section>
   );

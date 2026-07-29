@@ -42,6 +42,16 @@ describe('GuardianPanel', () => {
     expect(screen.getByRole('status', { name: /2 of 2 guardian votes/i })).toBeInTheDocument();
   });
 
+  it('shows a warning when guardian count is below quorum threshold', () => {
+    const guardians = [
+      'GA1234567890ABCDEF1234567890ABCDEF1234567890AB',
+    ];
+    render(<GuardianPanel guardians={guardians} guardianVotes={0} />);
+    expect(screen.queryByText(/Any 2 of 1 guardians/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/guardian quorum can never be reached/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 guardian configured/i)).toBeInTheDocument();
+  });
+
   it('shows threshold description', () => {
     const guardians = [
       'GA1234567890ABCDEF1234567890ABCDEF1234567890AB',
