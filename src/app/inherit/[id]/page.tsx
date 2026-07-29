@@ -119,7 +119,14 @@ export default function InheritPage() {
   }
 
   const shares = calculateShares(will.balance, will.beneficiaries);
-  const myShare = publicKey ? shares.find((s) => s.address === publicKey) : undefined;
+  const myShare = publicKey
+    ? shares
+        .filter((s) => s.address === publicKey)
+        .reduce(
+          (acc, s) => ({ ...acc, share: (BigInt(acc.share) + BigInt(s.share)).toString() }),
+          { address: publicKey, share: '0' },
+        )
+    : undefined;
 
   const grace =
     will.status === WillStatus.Triggered && will.triggerTime
