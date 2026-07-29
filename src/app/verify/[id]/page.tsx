@@ -1,3 +1,14 @@
+// Force every request to hit the Soroban RPC directly and skip Next.js's
+// default fetch cache. This page's entire purpose is to display trustworthy,
+// up-to-the-request on-chain truth (will status, balance, beneficiaries).
+// Serving a cached snapshot — even one only seconds old — could mislead
+// visitors who share the URL immediately after a status change on-chain
+// (e.g. a will just got triggered or released). 'force-dynamic' is the
+// correct choice here over a short `revalidate` window because the on-chain
+// state can change in a single block (~5 s on Stellar), and the verify page
+// is explicitly marketed as a wallet-free source of truth.
+export const dynamic = 'force-dynamic';
+
 import { notFound } from 'next/navigation';
 
 import { formatDeadline, WillStatus } from '@sorowill/sdk';
@@ -6,13 +17,6 @@ import { truncateAddress } from '@/lib/freighter';
 import { getContractId, getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { StatusBanner } from '@/components/StatusBanner';
 import { ShareVerification } from '@/components/ShareVerification';
-
-function truncate(address: string): string {
-  if (address.length <= 12) {
-    return address;
-  }
-  return `${address.slice(0, 4)}...${address.slice(-4)}`;
-}
 
 /**
  * Returns true when the error clearly indicates the will does not exist on
