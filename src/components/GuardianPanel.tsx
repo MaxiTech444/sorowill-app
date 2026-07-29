@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { truncateAddress } from '@/lib/freighter';
+import { CopyAddress } from './CopyAddress';
 
 const GUARDIAN_THRESHOLD = 2;
 
@@ -83,7 +83,7 @@ export function GuardianPanel({
       <ul className="mt-3 space-y-1.5" aria-label="Guardian addresses">
         {guardians.map((guardian, index) => (
           <li key={guardian} className="flex items-center justify-between font-mono text-sm text-will-light/80">
-            <span>{truncateAddress(guardian)}</span>
+            <CopyAddress address={guardian} />
             {isOwner && willId ? (
               <button
                 type="button"
