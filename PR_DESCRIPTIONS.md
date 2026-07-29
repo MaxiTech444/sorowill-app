@@ -4,7 +4,7 @@ This file contains detailed descriptions for the two PRs addressing issues #112 
 
 ---
 
-## PR #158 — Issue #112: No role indicator on the will detail page
+## PR #162 — Issue #112: No role indicator on the will detail page
 
 ### Problem
 
@@ -35,7 +35,7 @@ closes #112
 
 ---
 
-## PR #159 — Issue #113: inherit/[id]'s entitled share only accounts for the first matching beneficiary entry
+## PR #163 — Issue #113: inherit/[id]'s entitled share only accounts for the first matching beneficiary entry
 
 ### Problem
 
