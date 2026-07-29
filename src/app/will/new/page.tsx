@@ -9,6 +9,7 @@ import { truncateAddress, safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
 import { getUserBalance } from '@/lib/balance';
+import { isValidAmount } from '@/lib/amount';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 
 const CHECKIN_OPTIONS = [30, 60, 90, 180, 365];
@@ -179,7 +180,6 @@ export default function NewWillPage() {
 
   const tokenValid = CONTRACT_ADDRESS_PATTERN.test(token.trim());
   const showTokenError = token.trim() !== '' && !tokenValid;
-  const amountValid = amount.trim() !== '' && Number(amount) > 0 && tokenValid;
   useEffect(() => {
     const state: FormState = {
       step,
@@ -222,7 +222,7 @@ export default function NewWillPage() {
     }
   }
 
-  const amountValid = amount.trim() !== '' && Number(amount) > 0 && token.trim() !== '';
+  const amountValid = tokenValid && isValidAmount(amount);
   const beneficiariesValid = validateBeneficiaries(beneficiaries) && beneficiaries.every((b) => b.address.trim() !== '');
 
   const { rowErrors: guardianRowErrors, topError: guardianTopError } = validateGuardians(guardians, ownerAddress);
@@ -629,7 +629,13 @@ export default function NewWillPage() {
               <div className="flex justify-between">
                 <dt className="text-will-light/60">Amount</dt>
                 <dd className="text-will-light">
-                  {amount ? formatUSDC(toStroops(amount)) : '0.00'} USDC
+                  {(() => {
+                    try {
+                      return amount ? formatUSDC(toStroops(amount)) : '0.00';
+                    } catch {
+                      return '0.00';
+                    }
+                  })()} USDC
                 </dd>
               </div>
               <div className="flex justify-between">
