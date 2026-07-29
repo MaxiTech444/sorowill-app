@@ -41,9 +41,14 @@ function readEnv(name: string, fallback?: string): string {
 let cachedClient: SoroWillClient | undefined;
 let cachedNetwork: SoroWillNetwork | undefined;
 
+export function resetSoroWillClient(): void {
+  cachedClient = undefined;
+  cachedNetwork = undefined;
+}
+
 /** The Stellar network configured for this deployment. */
 export function getNetwork(): SoroWillNetwork {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && window.localStorage) {
     const stored = window.localStorage.getItem('sorowill_network');
     if (stored === 'testnet' || stored === 'mainnet') {
       return stored as SoroWillNetwork;

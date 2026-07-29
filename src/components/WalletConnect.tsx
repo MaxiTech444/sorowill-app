@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { safeConnectWallet, safeGetPublicKey, truncateAddress } from '@/lib/freighter';
+import { formatError } from '@/lib/errors';
 
 // TODO(#4): Replace this Freighter-only connect flow with a wallet-selection
 // UI once @sorowill/sdk ships adapters for other wallets (Albedo, xBull,
@@ -53,7 +54,7 @@ export function WalletConnect() {
     if (isSessionCleared()) {
       return;
     }
-    safeGetPublicKey().then((key) => {
+    void safeGetPublicKey().then((key) => {
       if (isMounted.current) {
         setPublicKey(key);
       }
@@ -68,13 +69,13 @@ export function WalletConnect() {
       const connection = await safeConnectWallet();
       setPublicKey(connection.publicKey);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect wallet');
+      setError(err instanceof Error ? formatError(err) : 'Failed to connect wallet');
     } finally {
       setConnecting(false);
     }
   }
 
-  function handleClearSession() {
+  function handleDisconnect() {
     setSessionCleared(true);
     setPublicKey(null);
     setError(null);

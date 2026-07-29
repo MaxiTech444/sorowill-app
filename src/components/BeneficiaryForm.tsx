@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import type { Beneficiary } from '@sorowill/sdk';
 
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
+import { formatError } from '@/lib/errors';
 
 export interface BeneficiaryFormProps {
   value: Beneficiary[];
@@ -119,7 +120,7 @@ export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {
         (prev) =>
           new Map(prev).set(
             id,
-            error instanceof Error ? error.message : 'Failed to resolve address',
+            error instanceof Error ? formatError(error) : 'Failed to resolve address',
           ),
       );
       setResolvedAddresses((prev) => {

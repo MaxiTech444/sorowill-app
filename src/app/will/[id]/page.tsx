@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 import {
   calculateShares,
@@ -15,6 +15,7 @@ import {
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
+import { formatError } from '@/lib/errors';
 import { useToast } from '@/components/Toast';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
@@ -39,7 +40,7 @@ function graceDeadline(will: Will): Date | null {
 }
 
 function getGuardianVoteErrorMessage(err: unknown): string {
-  const message = err instanceof Error ? err.message : String(err);
+  const message = formatError(err);
   const normalized = message.toLowerCase();
 
   if (normalized.includes('already voted')) {
@@ -50,7 +51,7 @@ function getGuardianVoteErrorMessage(err: unknown): string {
     return 'Only listed guardians can cast a vote for this will.';
   }
 
-  return err instanceof Error ? err.message : 'Guardian vote failed';
+  return formatError(err);
 }
 
 function formatTimeAgo(date: Date): string {
@@ -64,6 +65,10 @@ function formatTimeAgo(date: Date): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function isValidWillId(id: string): boolean {
+  return /^\d+$/.test(id);
 }
 
 export default function WillDetailPage() {
@@ -124,7 +129,7 @@ export default function WillDetailPage() {
       if (!isMounted.current) {
         return;
       }
-      setError(err instanceof Error ? err.message : 'Failed to load will');
+      setError(formatError(err));
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -142,7 +147,7 @@ export default function WillDetailPage() {
       setError(null);
       toast.success('Data refreshed');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to refresh data';
+      const message = formatError(err);
       setError(message);
       toast.error(message);
     } finally {
@@ -151,7 +156,7 @@ export default function WillDetailPage() {
   }, [willId, toast]);
 
   useEffect(() => {
-    safeGetPublicKey().then((key) => {
+    void safeGetPublicKey().then((key) => {
       if (isMounted.current) {
         setPublicKey(key);
       }
@@ -159,7 +164,7 @@ export default function WillDetailPage() {
   }, []);
 
   useEffect(() => {
-    refetch();
+    void refetch();
   }, [refetch]);
 
   function recordActivity(action: string, txHash: string) {
@@ -177,7 +182,7 @@ export default function WillDetailPage() {
       const verifyUrl = `${window.location.origin}/verify/${will.id}`;
       await downloadWillCertificate(will, verifyUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export certificate');
+      setError(formatError(err));
     } finally {
       setExportingCertificate(false);
     }
@@ -197,7 +202,7 @@ export default function WillDetailPage() {
       const actionLabel = name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       toast.success(`${actionLabel} successful`);
     } catch (err) {
-      const message = errorMessage ? errorMessage(err) : (err instanceof Error ? err.message : `${name} failed`);
+      const message = errorMessage ? errorMessage(err) : formatError(err);
       setError(message);
       toast.error(message);
     } finally {
@@ -232,7 +237,7 @@ export default function WillDetailPage() {
       setReminderStatus(`Reminder enabled for ${payload.subscription.email}.`);
       setReminderEmail('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to register reminder';
+      const message = formatError(err);
       setReminderStatus(message);
     } finally {
       setReminderPending(false);
