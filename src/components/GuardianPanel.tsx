@@ -7,6 +7,7 @@ export interface GuardianPanelProps {
   guardians: string[];
   guardianVotes: number;
   willId?: string;
+  isOwner?: boolean;
   isGuardian?: boolean;
   isActive?: boolean;
   isCastingVote?: boolean;
@@ -18,6 +19,7 @@ export function GuardianPanel({
   guardians,
   guardianVotes,
   willId,
+  isOwner = false,
   isGuardian = false,
   isActive = false,
   isCastingVote = false,
@@ -108,9 +110,18 @@ export function GuardianPanel({
         </button>
       ) : null}
       {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
-      <p className="mt-2 text-xs text-will-light/50">
-        Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.
-      </p>
+      {guardians.length < GUARDIAN_THRESHOLD ? (
+        <p className="mt-2 text-xs text-amber-400" role="alert">
+          ⚠️ Guardian quorum can never be reached: this will has {guardians.length}{' '}
+          guardian{guardians.length === 1 ? '' : 's'} but requires {GUARDIAN_THRESHOLD} votes.
+          Add at least {GUARDIAN_THRESHOLD - guardians.length} more guardian
+          {GUARDIAN_THRESHOLD - guardians.length === 1 ? '' : 's'} to enable the safety mechanism.
+        </p>
+      ) : (
+        <p className="mt-2 text-xs text-will-light/50">
+          Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.
+        </p>
+      )}
     </section>
   );
 }
