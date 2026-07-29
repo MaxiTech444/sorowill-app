@@ -26,7 +26,7 @@ export function StatsContent() {
         // Attempt to fetch protocol stats
         // Note: This depends on the contract exposing get_protocol_stats method
         try {
-          const protocolStats = await client.getProtocolStats?.();
+          const protocolStats = await (client as any).getProtocolStats?.();
           if (protocolStats) {
             setStats({
               totalWills: Number(protocolStats.totalWills || 0),

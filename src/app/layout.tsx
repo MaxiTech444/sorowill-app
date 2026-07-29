@@ -7,8 +7,22 @@ import ClientLayout from './layout-client';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://sorowill.vercel.app'),
   title: 'SoroWill',
   description: 'Trustless on-chain inheritance on Stellar',
+  openGraph: {
+    title: 'SoroWill',
+    description: 'Trustless on-chain inheritance on Stellar',
+    url: 'https://sorowill.vercel.app',
+    siteName: 'SoroWill',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SoroWill',
+    description: 'Trustless on-chain inheritance on Stellar',
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

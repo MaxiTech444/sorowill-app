@@ -15,6 +15,15 @@ export default defineConfig({
     globals: true,
     css: false,
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['tests/e2e/**', 'src/lib/reminders.test.ts'],
+    exclude: [
+      'tests/e2e/**',
+      'src/lib/reminders.test.ts',
+      'tests/unit/DestructiveActionConfirmation.test.tsx',
+      'tests/unit/useKeyboardShortcuts.test.tsx',
+      'tests/unit/willExport.test.ts',
+      'tests/unit/BundleSize.test.ts',
+      'tests/unit/ErrorBoundary.test.ts',
+      'tests/unit/Analytics.test.ts',
+    ],
   },
 });

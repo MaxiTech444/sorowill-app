@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 import {
   calculateShares,
@@ -25,6 +25,10 @@ interface ActivityEntry {
   action: string;
   txHash: string;
   at: Date;
+}
+
+function isValidWillId(id: string): boolean {
+  return /^\d+$/.test(id);
 }
 
 function nextCheckinDeadline(will: Will): Date {

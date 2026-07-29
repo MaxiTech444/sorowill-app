@@ -106,7 +106,7 @@ describe('BeneficiaryForm', () => {
       { address: 'GB', percentage: 0 },
     ];
     render(<BeneficiaryForm value={beneficiaries} onChange={onChange} />);
-    await user.click(screen.getByRole('button', { name: /split equally/i }));
+    await user.click(screen.getByRole('button', { name: /distribute percentages/i }));
     expect(onChange).toHaveBeenCalledWith([
       { address: 'GA', percentage: 50 },
       { address: 'GB', percentage: 50 },
@@ -121,7 +121,7 @@ describe('BeneficiaryForm', () => {
       percentage: 0,
     }));
     render(<BeneficiaryForm value={beneficiaries} onChange={onChange} />);
-    await user.click(screen.getByRole('button', { name: /split equally/i }));
+    await user.click(screen.getByRole('button', { name: /distribute percentages/i }));
     // 100 / 6 = 16 remainder 4 → last 4 get 17, first 2 get 16
     const called = onChange.mock.calls[0][0];
     expect(called).toHaveLength(6);

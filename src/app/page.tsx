@@ -80,27 +80,6 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <footer className="flex flex-col items-center gap-2 border-t border-white/10 pt-8 text-center text-sm text-will-light/50">
-        <p>{ct('builtOnStellar')}</p>
-        <div className="flex items-center gap-4">
-          <span>{ct('mitLicense')}</span>
-      <footer className="flex flex-col items-center gap-3 border-t border-white/10 pt-8 text-center text-sm text-will-light/50">
-        <p>SoroWill, built on Stellar</p>
-        <div className="flex flex-wrap items-center justify-center gap-4">
-          <Link href="/faq" className="hover:text-will-light">
-            FAQ
-          </Link>
-          <span>MIT License</span>
-          <a
-            href="https://github.com/SoroWill/sorowill-app"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-will-light"
-          >
-            {ct('githubLink')}
-          </a>
-        </div>
-      </footer>
       <Footer />
     </div>
   );
