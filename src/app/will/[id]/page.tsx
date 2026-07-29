@@ -494,7 +494,14 @@ export default function WillDetailPage() {
               min={0}
               step="0.01"
               value={topUpAmount}
-              onChange={(event) => setTopUpAmount(event.target.value)}
+              onChange={(event) => {
+                const val = event.target.value;
+                if (val !== '' && Number(val) < 0) {
+                  setTopUpAmount('0');
+                } else {
+                  setTopUpAmount(val);
+                }
+              }}
               className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
               aria-label="Top up amount in USDC"
             />
@@ -523,7 +530,14 @@ export default function WillDetailPage() {
                 min={0}
                 step="0.01"
                 value={earlyReleaseAmount}
-                onChange={(event) => setEarlyReleaseAmount(event.target.value)}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  if (val !== '' && Number(val) < 0) {
+                    setEarlyReleaseAmount('0');
+                  } else {
+                    setEarlyReleaseAmount(val);
+                  }
+                }}
                 placeholder="0.00"
                 className="mt-1 w-full rounded-lg border border-will-purple/30 bg-will-purple/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
               />
