@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 import {
   calculateShares,
@@ -12,6 +12,10 @@ import {
   type Beneficiary,
   type Will,
 } from '@sorowill/sdk';
+
+export function isTopUpAmountValid(topUpAmount: string): boolean {
+  return topUpAmount.trim() !== '' && !isNaN(Number(topUpAmount)) && Number(topUpAmount) > 0;
+}
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
@@ -278,6 +282,8 @@ export default function WillDetailPage() {
   const isGuardian = !!publicKey && will.guardians.includes(publicKey);
   const client = getSoroWillClient();
 
+  const isTopUpValid = isTopUpAmountValid(topUpAmount);
+
   const checkinDeadline = nextCheckinDeadline(will);
   const checkinOverdue = will.status === WillStatus.Active && Date.now() >= checkinDeadline.getTime();
 
@@ -479,6 +485,7 @@ export default function WillDetailPage() {
           className="print-hide rounded-xl border border-white/10 bg-white/5 p-4"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (!isTopUpValid) return;
             await runAction('top_up', () => client.topUp(will.id, toStroops(topUpAmount).toString()));
             setTopUpAmount('');
             setShowTopUp(false);
@@ -500,7 +507,7 @@ export default function WillDetailPage() {
             />
             <button
               type="submit"
-              disabled={busyAction !== null || !topUpAmount}
+              disabled={busyAction !== null || !isTopUpValid}
               className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-60 sm:w-auto"
             >
               Confirm
@@ -612,7 +619,6 @@ export default function WillDetailPage() {
       </div>
 
       <div className="print-hide">
-        <GuardianPanel guardians={will.guardians} guardianVotes={will.guardianVotes} isOwner={isOwner} willId={will.id} />
         <GuardianPanel
           guardians={will.guardians}
           guardianVotes={will.guardianVotes}
