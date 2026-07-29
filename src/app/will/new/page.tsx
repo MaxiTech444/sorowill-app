@@ -14,6 +14,10 @@ import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 const CHECKIN_OPTIONS = [30, 60, 90, 180, 365];
 const GRACE_OPTIONS = [3, 7, 14];
 
+// The contract's persistent storage TTL is bumped to ~60 days' worth of ledgers on each write.
+// Check-in periods exceeding this window risk storage archival before the owner's next check-in.
+const SAFE_CHECKIN_WINDOW_DAYS = 60;
+
 const STEP_LABELS = ['Amount', 'Beneficiaries', 'Timing', 'Guardians', 'Review'];
 const STORAGE_KEY = 'sorowill-form-draft';
 
@@ -30,6 +34,11 @@ interface FormState {
 /** True when `address` is a well-formed Stellar ED25519 public key. */
 function isValidStellarAddress(address: string): boolean {
   return /^G[A-Z2-7]{55}$/.test(address);
+}
+
+/** True when a check-in period exceeds the contract's safe storage TTL window. */
+function isUnsafeCheckinPeriod(days: number): boolean {
+  return days > SAFE_CHECKIN_WINDOW_DAYS;
 }
 
 /** Validate the guardian list, returning an array of per-row error messages
@@ -179,7 +188,6 @@ export default function NewWillPage() {
 
   const tokenValid = CONTRACT_ADDRESS_PATTERN.test(token.trim());
   const showTokenError = token.trim() !== '' && !tokenValid;
-  const amountValid = amount.trim() !== '' && Number(amount) > 0 && tokenValid;
   useEffect(() => {
     const state: FormState = {
       step,
@@ -479,6 +487,14 @@ export default function NewWillPage() {
                   className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
                 />
               </div>
+              {isUnsafeCheckinPeriod(checkinPeriodDays) && (
+                <div className="rounded-lg border border-amber-400/40 bg-amber-400/5 px-3 py-3" role="status">
+                  <p className="text-xs font-medium text-amber-400">Storage archival risk</p>
+                  <p className="mt-1 text-xs text-amber-400/90">
+                    This {checkinPeriodDays}-day check-in period exceeds the contract&apos;s storage safety window ({SAFE_CHECKIN_WINDOW_DAYS} days). Your will&apos;s on-chain data may be archived before your next check-in, making it inaccessible. Consider choosing a shorter period, or plan to check in more frequently.
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <legend className="text-sm font-medium text-will-light">Grace period</legend>
