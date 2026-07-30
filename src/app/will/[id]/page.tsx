@@ -15,6 +15,7 @@ import {
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
+import { nextCheckinDeadline, graceDeadline, getWillErrorMessage } from '@/lib/deadlines';
 import { useToast } from '@/components/Toast';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
@@ -27,15 +28,8 @@ interface ActivityEntry {
   at: Date;
 }
 
-function nextCheckinDeadline(will: Will): Date {
-  return new Date(will.lastCheckin.getTime() + will.checkinPeriodDays * 86_400 * 1000);
-}
-
-function graceDeadline(will: Will): Date | null {
-  if (!will.triggerTime) {
-    return null;
-  }
-  return new Date(will.triggerTime.getTime() + will.gracePeriodDays * 86_400 * 1000);
+function isValidWillId(id: string): boolean {
+  return /^\d+$/.test(id);
 }
 
 function getGuardianVoteErrorMessage(err: unknown): string {
@@ -124,7 +118,7 @@ export default function WillDetailPage() {
       if (!isMounted.current) {
         return;
       }
-      setError(err instanceof Error ? err.message : 'Failed to load will');
+      setError(getWillErrorMessage(err));
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -142,7 +136,7 @@ export default function WillDetailPage() {
       setError(null);
       toast.success('Data refreshed');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to refresh data';
+      const message = getWillErrorMessage(err);
       setError(message);
       toast.error(message);
     } finally {

@@ -4,6 +4,7 @@ import Link from 'next/link';
 
 import { formatUSDC, getTimeUntilCheckin, WillStatus, type Will } from '@sorowill/sdk';
 
+import { formatCheckinLabel } from '@/lib/deadlines';
 import { StatusBanner } from './StatusBanner';
 
 export interface WillCardProps {
@@ -15,9 +16,8 @@ export interface WillCardProps {
 
 export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps) {
   const secondsLeft = getTimeUntilCheckin(will);
-  const daysLeft = Math.ceil(secondsLeft / 86_400);
-
   const overdue = secondsLeft <= 0;
+
   const colorClass = overdue
     ? 'text-red-400'
     : secondsLeft < 3 * 86_400
@@ -39,7 +39,7 @@ export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps)
         <p className="text-sm text-will-light/70">{formatUSDC(BigInt(will.balance))} USDC locked</p>
         {will.status === WillStatus.Active ? (
           <p className={`text-xs ${colorClass}`} role="status">
-            {overdue ? 'Check-in overdue' : `Check-in due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
+            {formatCheckinLabel(secondsLeft)}
           </p>
         ) : null}
       </div>

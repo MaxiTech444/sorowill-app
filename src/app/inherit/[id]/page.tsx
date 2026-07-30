@@ -7,6 +7,7 @@ import { calculateShares, formatUSDC, WillStatus, type Will } from '@sorowill/sd
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
+import { getWillErrorMessage, graceDeadline } from '@/lib/deadlines';
 import { useToast } from '@/components/Toast';
 import { StatusBanner } from '@/components/StatusBanner';
 
@@ -47,7 +48,7 @@ export default function InheritPage() {
       if (!isMounted.current) {
         return;
       }
-      setError(err instanceof Error ? err.message : 'Failed to load will');
+      setError(getWillErrorMessage(err));
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -88,7 +89,7 @@ export default function InheritPage() {
       await refetch();
       toast.success('Inheritance claimed successfully');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to claim inheritance';
+      const message = getWillErrorMessage(err);
       setError(message);
       toast.error(message);
     } finally {
@@ -121,10 +122,7 @@ export default function InheritPage() {
   const shares = calculateShares(will.balance, will.beneficiaries);
   const myShare = publicKey ? shares.find((s) => s.address === publicKey) : undefined;
 
-  const grace =
-    will.status === WillStatus.Triggered && will.triggerTime
-      ? new Date(will.triggerTime.getTime() + will.gracePeriodDays * 86_400 * 1000)
-      : null;
+  const grace = graceDeadline(will);
   const canClaim = will.status === WillStatus.Triggered && grace !== null && Date.now() >= grace.getTime();
 
   return (
