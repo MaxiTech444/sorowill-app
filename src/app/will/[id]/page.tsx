@@ -254,7 +254,7 @@ export default function WillDetailPage() {
   }
 
   // Quick client-side validation before hitting the RPC layer
-  if (!isValidWillId(willId)) {
+  if (!willId || /^\d+$/.test(willId) === false) {
     return (
       <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-8 text-center">
         <h1 className="text-lg font-semibold text-red-300">Invalid will ID</h1>

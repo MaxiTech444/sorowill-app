@@ -11,9 +11,14 @@ import { formatError } from '@/lib/errors';
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
 import { getUserBalance } from '@/lib/balance';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
+import { validateGuardians } from '@/lib/guardianValidation';
 
 const CHECKIN_OPTIONS = [30, 60, 90, 180, 365];
 const GRACE_OPTIONS = [3, 7, 14];
+
+// The contract's persistent storage TTL is bumped to ~60 days' worth of ledgers on each write.
+// Check-in periods exceeding this window risk storage archival before the owner's next check-in.
+const SAFE_CHECKIN_WINDOW_DAYS = 60;
 
 const STEP_LABELS = ['Amount', 'Beneficiaries', 'Timing', 'Guardians', 'Review'];
 const STORAGE_KEY = 'sorowill-form-draft';
@@ -28,51 +33,9 @@ interface FormState {
   guardians: string[];
 }
 
-/** True when `address` is a well-formed Stellar ED25519 public key. */
-function isValidStellarAddress(address: string): boolean {
-  return /^G[A-Z2-7]{55}$/.test(address);
-}
-
-/** Validate the guardian list, returning an array of per-row error messages
- *  (empty string = no error for that row) plus an optional top-level error. */
-function validateGuardians(
-  guardians: string[],
-  ownerAddress: string | null,
-): { rowErrors: string[]; topError: string | null } {
-  const rowErrors: string[] = guardians.map(() => '');
-  let topError: string | null = null;
-
-  const seen = new Set<string>();
-
-  for (let i = 0; i < guardians.length; i++) {
-    const g = guardians[i].trim();
-    if (g === '') continue; // blank rows are warned separately
-
-    if (!isValidStellarAddress(g)) {
-      rowErrors[i] = 'Not a valid Stellar address (must start with G and be 56 characters)';
-      continue;
-    }
-
-    if (ownerAddress && g === ownerAddress) {
-      rowErrors[i] = 'A guardian cannot be the same as the will owner';
-      continue;
-    }
-
-    if (seen.has(g)) {
-      rowErrors[i] = 'Duplicate guardian address';
-      continue;
-    }
-
-    seen.add(g);
-  }
-
-  // Top-level error when any non-blank row has an issue.
-  const hasRowErrors = rowErrors.some((e, i) => e !== '' && guardians[i].trim() !== '');
-  if (hasRowErrors) {
-    topError = 'Please fix the guardian address errors above before continuing.';
-  }
-
-  return { rowErrors, topError };
+/** True when a check-in period exceeds the contract's safe storage TTL window. */
+function isUnsafeCheckinPeriod(days: number): boolean {
+  return days > SAFE_CHECKIN_WINDOW_DAYS;
 }
 
 // Soroban contract strkey: 'C' followed by 55 base32 chars (RFC 4648 alphabet,
@@ -338,6 +301,14 @@ export default function NewWillPage() {
   async function handleSubmit() {
     setSubmitting(true);
     setError(null);
+    
+    // Validate guardians before submission
+    if (guardianTopError !== null) {
+      setError('Please fix the guardian address errors before submitting.');
+      setSubmitting(false);
+      return;
+    }
+    
     try {
       const client = getSoroWillClient();
       const { willId } = await client.createWill({
@@ -512,6 +483,14 @@ export default function NewWillPage() {
                   className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
                 />
               </div>
+              {isUnsafeCheckinPeriod(checkinPeriodDays) && (
+                <div className="rounded-lg border border-amber-400/40 bg-amber-400/5 px-3 py-3" role="status">
+                  <p className="text-xs font-medium text-amber-400">Storage archival risk</p>
+                  <p className="mt-1 text-xs text-amber-400/90">
+                    This {checkinPeriodDays}-day check-in period exceeds the contract&apos;s storage safety window ({SAFE_CHECKIN_WINDOW_DAYS} days). Your will&apos;s on-chain data may be archived before your next check-in, making it inaccessible. Consider choosing a shorter period, or plan to check in more frequently.
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <legend className="text-sm font-medium text-will-light">Grace period</legend>
@@ -644,6 +623,13 @@ export default function NewWillPage() {
             );
             })}
 
+            {/* Top-level validation error when guardians have issues */}
+            {guardianTopError && (
+              <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-xs text-red-400" role="alert">
+                {guardianTopError}
+              </p>
+            )}
+
             {/* Summary warning when blank rows exist alongside valid rows */}
             {blankGuardianIndices.length > 0 && guardians.some((g) => g.trim() !== '') ? (
               <p className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
@@ -746,7 +732,7 @@ export default function NewWillPage() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || guardianTopError !== null}
             className="w-full rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {submitting ? 'Creating…' : 'Create Will'}

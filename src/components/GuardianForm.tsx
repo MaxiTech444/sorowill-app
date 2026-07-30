@@ -1,7 +1,5 @@
 'use client';
 
-import { truncateAddress } from '@/lib/freighter';
-
 const MAX_GUARDIANS = 5;
 
 export interface GuardianFormProps {

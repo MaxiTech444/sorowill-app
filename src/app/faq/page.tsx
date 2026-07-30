@@ -100,7 +100,7 @@ export default function FAQPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-will-light">The Full Lifecycle</h2>
           <p className="text-sm text-will-light/60">
-            Here's how your will progresses from creation to resolution:
+            Here&apos;s how your will progresses from creation to resolution:
           </p>
         </div>
 

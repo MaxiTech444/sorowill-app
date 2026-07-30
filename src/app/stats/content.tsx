@@ -42,7 +42,7 @@ export function StatsContent() {
         }
 
         // Fallback: fetch wills sequentially to calculate stats
-        const wills: any[] = [];
+        const wills: { id: string; executionStarted?: boolean; amount?: string | bigint }[] = [];
         const promises = [];
         for (let i = 1; i <= 100; i++) {
           promises.push(
@@ -82,7 +82,7 @@ export function StatsContent() {
       }
     };
 
-    fetchStats();
+    void fetchStats();
   }, []);
 
   if (loading) {
