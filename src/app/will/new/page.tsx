@@ -339,10 +339,16 @@ export default function NewWillPage() {
         </p>
         <div className="mt-3 flex gap-1.5">
           {STEP_LABELS.map((label, index) => (
-            <span
+            <button
               key={label}
-              className={`h-1.5 flex-1 rounded-full ${index <= step ? 'bg-will-purple' : 'bg-white/10'}`}
-              aria-hidden="true"
+              type="button"
+              onClick={() => {
+                if (index <= step) {
+                  setStep(index);
+                }
+              }}
+              className={`h-1.5 flex-1 rounded-full ${index <= step ? 'bg-will-purple cursor-pointer hover:opacity-80' : 'bg-white/10 cursor-not-allowed'}`}
+              aria-label={index <= step ? `Go to step ${index + 1}: ${label}` : undefined}
             />
           ))}
         </div>

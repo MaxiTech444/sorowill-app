@@ -14,7 +14,8 @@ import {
 } from '@sorowill/sdk';
 
 export function isTopUpAmountValid(topUpAmount: string): boolean {
-  return topUpAmount.trim() !== '' && !isNaN(Number(topUpAmount)) && Number(topUpAmount) > 0;
+  const num = Number(topUpAmount);
+  return topUpAmount.trim() !== '' && isFinite(num) && num > 0;
 }
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
@@ -103,6 +104,12 @@ export default function WillDetailPage() {
   const [showEditBeneficiaries, setShowEditBeneficiaries] = useState(false);
   const [draftBeneficiaries, setDraftBeneficiaries] = useState<Beneficiary[]>([]);
   const showEditBeneficiariesRef = useRef(false);
+  useEffect(() => {
+    if (!showEditBeneficiaries && will) {
+      setDraftBeneficiaries(will.beneficiaries);
+    }
+  }, [showEditBeneficiaries, will]);
+
   const [showEarlyRelease, setShowEarlyRelease] = useState(false);
   const [earlyReleaseAmount, setEarlyReleaseAmount] = useState('');
   const [earlyReleaseRecipient, setEarlyReleaseRecipient] = useState('');
@@ -667,11 +674,11 @@ export default function WillDetailPage() {
       </div>
 
       <div className="print-hide rounded-xl border border-white/10 bg-white/5 p-4">
-        <h2 className="text-sm font-semibold text-will-light">Recent activity</h2>
+        <h2 className="text-sm font-semibold text-will-light">Recent activity (this session)</h2>
         {activity.length === 0 ? (
           <div className="mt-2 flex items-center gap-2 text-sm text-will-light/60">
             <span>📋</span>
-            <p>No actions taken yet this session.</p>
+            <p>No actions recorded yet in this session. Activity is only tracked during the current browser session and does not persist across page reloads.</p>
           </div>
         ) : (
           <ul className="mt-2 space-y-2">
