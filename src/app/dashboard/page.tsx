@@ -429,9 +429,18 @@ export default function DashboardPage() {
       </div>
 
       {error ? (
-        <p className="text-sm text-red-400" role="alert">
-          {error}
-        </p>
+        <div className="flex flex-col gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4" role="alert">
+          <p className="text-sm text-red-300/80">{error}</p>
+          {publicKey && (
+            <button
+              type="button"
+              onClick={() => void loadWills(publicKey)}
+              className="rounded-full border border-red-400/40 px-3 py-1.5 text-xs text-red-300 transition hover:border-red-400/70"
+            >
+              Try again
+            </button>
+          )}
+        </div>
       ) : null}
 
       {/* Batch Top-up Form Panel */}

@@ -194,7 +194,7 @@ export default function NewWillPage() {
   // warning, not a blocking error — the user sees the warning and can proceed).
   const guardiansValid = guardianTopError === null;
 
-  const canGoNext = [amountValid, beneficiariesValid, true, guardiansValid, true][step];
+  const canGoNext = [isAmountValid, beneficiariesValid, true, guardiansValid, true][step];
 
   // Rows that are blank — the user will see a warning that they'll be dropped.
   const blankGuardianIndices = guardians

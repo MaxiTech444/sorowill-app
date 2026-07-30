@@ -75,7 +75,7 @@ export function WalletConnect() {
     }
   }
 
-  function handleDisconnect() {
+  function handleClearSession() {
     setSessionCleared(true);
     setPublicKey(null);
     setError(null);

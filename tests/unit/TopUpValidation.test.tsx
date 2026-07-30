@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isTopUpAmountValid } from '@/app/will/[id]/page';
+import { isTopUpAmountValid } from '@/lib/amount';
 
 describe('Top Up Amount Format Validation', () => {
   it('rejects empty or whitespace inputs', () => {

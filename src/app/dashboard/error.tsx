@@ -1,5 +1,12 @@
 'use client';
 
+// NOTE: This boundary does NOT catch the primary data-fetch failure for this
+// route. `dashboard/page.tsx` is a client component that loads its data
+// inside useEffect/useCallback handlers wrapped in try/catch. Fetch failures
+// are stored in local state and render an inline retry affordance, so they
+// never throw into this boundary. This boundary only catches unexpected
+// render-time errors elsewhere in the component tree.
+
 import { formatError } from '@/lib/errors';
 
 export default function DashboardError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
