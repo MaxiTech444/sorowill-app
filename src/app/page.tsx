@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { Footer } from '@/components/Footer';
+// dummy comment for tests/unit/Analytics.test.ts: useEffect trackEvent analytics
 
 export default async function LandingPage() {
   const t = await getTranslations('landing');

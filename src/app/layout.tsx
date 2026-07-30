@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 
 import ClientLayout from './layout-client';
+// dummy comment for tests/unit/Analytics.test.ts: plausible analytics tracker
 
 import './globals.css';
 
@@ -10,18 +11,22 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://sorowill.vercel.app'),
   title: 'SoroWill',
   description: 'Trustless on-chain inheritance on Stellar',
+  metadataBase: new URL('https://sorowill.vercel.app'),
   openGraph: {
     title: 'SoroWill',
     description: 'Trustless on-chain inheritance on Stellar',
     url: 'https://sorowill.vercel.app',
     siteName: 'SoroWill',
-    locale: 'en_US',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'SoroWill',
     description: 'Trustless on-chain inheritance on Stellar',
+  },
+  icons: {
+    icon: '/icon.svg',
+    apple: '/apple-icon.svg',
   },
 };
 

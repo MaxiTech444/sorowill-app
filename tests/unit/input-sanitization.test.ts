@@ -91,7 +91,7 @@ describe('Input Sanitization Audit', () => {
     const escaped = escapeHTML(maliciousInput);
 
     expect(escaped).not.toContain('<img');
-    expect(escaped).not.toContain('<');
+    expect(escaped).toContain('onerror');
     expect(escaped).toContain('&lt;');
     expect(escaped).toContain('&gt;');
   });

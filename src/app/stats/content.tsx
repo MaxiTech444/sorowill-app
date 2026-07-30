@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getSoroWillClient } from '@/lib/sorowill';
+import { formatError } from '@/lib/errors';
 
 interface ProtocolStats {
   totalWills: number;
@@ -75,7 +76,7 @@ export function StatsContent() {
           completedInheritances,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch stats');
+        setError(formatError(err));
       } finally {
         setLoading(false);
       }
