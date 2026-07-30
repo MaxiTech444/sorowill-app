@@ -128,6 +128,12 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const handleRetry = useCallback(() => {
+    if (publicKey) {
+      void loadWills(publicKey);
+    }
+  }, [publicKey, loadWills]);
+
   const handleManualRefresh = useCallback(async () => {
     if (!publicKey) return;
     setIsRefreshing(true);
@@ -429,9 +435,16 @@ export default function DashboardPage() {
       </div>
 
       {error ? (
-        <p className="text-sm text-red-400" role="alert">
-          {error}
-        </p>
+        <div className="text-sm text-red-400 flex items-center gap-3" role="alert">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="rounded-full border border-red-400/50 px-3 py-1 text-xs font-medium text-red-300 transition hover:bg-red-400/10"
+          >
+            Try again
+          </button>
+        </div>
       ) : null}
 
       {/* Batch Top-up Form Panel */}
