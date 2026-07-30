@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import {
   safeConnectWallet,
   safeGetPublicKey,
-  safeIsFreighterInstalled,
   truncateAddress,
 } from '@/lib/freighter';
 
@@ -21,7 +20,7 @@ export function WalletConnectWithErrorStates() {
   const [error, setError] = useState<ErrorInfo | null>(null);
 
   useEffect(() => {
-    safeGetPublicKey().then(setPublicKey);
+    void safeGetPublicKey().then(setPublicKey);
   }, []);
 
   async function handleConnect() {

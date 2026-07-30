@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { type Will, formatUSDC } from '@sorowill/sdk';
 import { getSoroWillClient } from '@/lib/sorowill';
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
+import { formatError } from '@/lib/errors';
 
 function OnboardContent() {
   const searchParams = useSearchParams();
@@ -17,7 +18,7 @@ function OnboardContent() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
 
   useEffect(() => {
-    safeGetPublicKey().then(setPublicKey);
+    void safeGetPublicKey().then(setPublicKey);
   }, []);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ function OnboardContent() {
         setWill(fetched);
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to load will details');
+        setError(formatError(err));
       })
       .finally(() => {
         setLoading(false);

@@ -59,7 +59,7 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-inside space-y-2 pl-4">
             <li>• <strong>Stellar RPC Providers:</strong> Your wallet interactions are sent to Soroban RPC nodes (managed by Stellar Foundation or third parties) to sign and broadcast transactions.</li>
-            <li>• <strong>Wallet Providers:</strong> If you use a browser wallet (Freighter, etc.), that provider's privacy policy governs key management.</li>
+            <li>• <strong>Wallet Providers:</strong> If you use a browser wallet (Freighter, etc.), that provider&apos;s privacy policy governs key management.</li>
           </ul>
           <p className="mt-4">
             We recommend reviewing the privacy policies of these third parties.
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-will-light">5. Your Rights</h2>
           <p>
-            Since we collect minimal personal data, there is little to request or delete beyond on-chain records (which we cannot modify due to Soroban's immutability). If you wish to know what analytics or logs we hold, contact us.
+            Since we collect minimal personal data, there is little to request or delete beyond on-chain records (which we cannot modify due to Soroban&apos;s immutability). If you wish to know what analytics or logs we hold, contact us.
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export default function PrivacyPage() {
         <div className="rounded-lg border border-white/10 bg-white/5 p-6">
           <p className="text-sm font-semibold text-will-light">Key Principle:</p>
           <p className="mt-2 text-sm">
-            Since SoroWill is non-custodial and most data lives on-chain, user privacy is protected by the transparent, immutable nature of the blockchain itself. We do not need to "protect" data we do not control.
+             Since SoroWill is non-custodial and most data lives on-chain, user privacy is protected by the transparent, immutable nature of the blockchain itself. We do not need to &quot;protect&quot; data we do not control.
           </p>
         </div>
       </section>

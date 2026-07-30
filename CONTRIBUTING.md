@@ -24,6 +24,26 @@ fix/N-short-description
 - Test the affected page in a real browser with Freighter installed where the change touches wallet or transaction flows.
 - Keep the dark purple theme (`will-purple`, `will-dark`, `will-light`) consistent with the rest of the app.
 
+## Before opening a PR
+
+Run these steps locally in order — they mirror exactly what CI runs in `.github/workflows/test.yml`:
+
+```bash
+# 1. Type-check — catch TypeScript errors before CI does
+npm run typecheck
+
+# 2. Lint — ESLint must report zero errors
+npm run lint
+
+# 3. Build — the production Next.js build must succeed
+npm run build
+
+# 4. Unit tests — all Vitest tests must pass
+npm run test
+```
+
+> **All four must pass with zero errors before you open a PR.** A PR that fails any of these steps will not be merged and may lose its Wave window.
+
 ## Design tokens
 
 The app uses a compact palette of custom color tokens defined in `tailwind.config.ts`. Use these instead of hardcoded hex values so the theme stays consistent across every view:

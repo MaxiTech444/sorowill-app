@@ -157,7 +157,7 @@ test.describe('CSV Export', () => {
     // Should properly handle CSV escaping
     // CSV format requires proper escaping of quotes and commas
     const lines = content.split('\n');
-    lines.forEach(line => {
+    lines.forEach((line: string) => {
       // Should not have unescaped quotes in the middle of a value
       const parts = line.split(',');
       expect(parts.length).toBeGreaterThanOrEqual(5);

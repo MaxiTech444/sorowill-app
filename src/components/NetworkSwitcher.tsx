@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getNetwork } from '@/lib/sorowill';
+import { getNetwork, resetSoroWillClient } from '@/lib/sorowill';
 import { type SoroWillNetwork } from '@sorowill/sdk';
 
 export function NetworkSwitcher() {
@@ -24,6 +24,12 @@ export function NetworkSwitcher() {
     if (confirmSwitch) {
       window.localStorage.setItem('sorowill_network', newNetwork);
       setNetwork(newNetwork);
+      // Invalidate the cached SoroWillClient singleton so the next
+      // module evaluation starts fresh. This is important because
+      // Vercel's serverless functions can stay warm across requests,
+      // and the SDK's own spec-caching could otherwise serve stale
+      // contract state after a network switch.
+      resetSoroWillClient();
       // Reload the page to reconstruct client and clear/reset state
       window.location.reload();
     } else {

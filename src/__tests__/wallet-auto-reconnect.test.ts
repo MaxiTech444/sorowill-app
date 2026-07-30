@@ -1,6 +1,6 @@
 describe('Wallet Auto-Reconnect Audit (Issue #24)', () => {
   describe('Shared Auto-Reconnect Hook', () => {
-    const useWalletAutoReconnect = (pageType: string) => {
+    const useWalletAutoReconnect = () => {
       const publicKey = typeof window !== 'undefined' ? sessionStorage.getItem('walletPublicKey') : null
       return { publicKey, isConnected: !!publicKey }
     }
@@ -177,7 +177,7 @@ describe('Wallet Auto-Reconnect Audit (Issue #24)', () => {
       const pages = ['dashboard', 'will/[id]', 'inherit/[id]', 'verify/[id]', 'will/new']
       const safeGetPublicKey = jest.fn(async () => 'GCQRQHBG64RXZXPD73KPD4RNPQDWSW6QBIVVPICMZ2ZQ7CWSQKQ5CLKM')
 
-      for (const page of pages) {
+      for (let i = 0; i < pages.length; i++) {
         const result = await safeGetPublicKey()
         expect(result).toBe('GCQRQHBG64RXZXPD73KPD4RNPQDWSW6QBIVVPICMZ2ZQ7CWSQKQ5CLKM')
       }

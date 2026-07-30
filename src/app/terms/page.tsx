@@ -27,7 +27,7 @@ export default function TermsPage() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-will-light">1. Overview</h2>
           <p>
-            SoroWill ("the Protocol") is a non-custodial, smart contract-based inheritance application running on Stellar's Soroban network. Users deploy contracts to hold and distribute assets according to self-defined rules and beneficiary allocations. These terms govern your use of the SoroWill application.
+            SoroWill (&quot;the Protocol&quot;) is a non-custodial, smart contract-based inheritance application running on Stellar&apos;s Soroban network. Users deploy contracts to hold and distribute assets according to self-defined rules and beneficiary allocations. These terms govern your use of the SoroWill application.
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export default function TermsPage() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-will-light">5. No Liability</h2>
           <p>
-            SoroWill is provided "as-is" without warranties. To the fullest extent permitted by law, SoroWill and its contributors are not liable for:
+            SoroWill is provided &quot;as-is&quot; without warranties. To the fullest extent permitted by law, SoroWill and its contributors are not liable for:
           </p>
           <ul className="list-inside space-y-2 pl-4">
             <li>• Loss or theft of funds due to user error or security breaches</li>
