@@ -103,6 +103,12 @@ export default function WillDetailPage() {
   const [showEditBeneficiaries, setShowEditBeneficiaries] = useState(false);
   const [draftBeneficiaries, setDraftBeneficiaries] = useState<Beneficiary[]>([]);
   const showEditBeneficiariesRef = useRef(false);
+  useEffect(() => {
+    if (!showEditBeneficiaries && will) {
+      setDraftBeneficiaries(will.beneficiaries);
+    }
+  }, [showEditBeneficiaries, will]);
+
   const [showEarlyRelease, setShowEarlyRelease] = useState(false);
   const [earlyReleaseAmount, setEarlyReleaseAmount] = useState('');
   const [earlyReleaseRecipient, setEarlyReleaseRecipient] = useState('');
