@@ -290,6 +290,8 @@ export default function WillDetailPage() {
 
   const isOwner = publicKey === will.owner;
   const isGuardian = !!publicKey && will.guardians.includes(publicKey);
+  const isBeneficiary = !!publicKey && will.beneficiaries.some((b) => b.address === publicKey);
+  const role = isOwner ? 'Owner' : isGuardian ? 'Guardian' : isBeneficiary ? 'Beneficiary' : 'Viewing as guest';
   const client = getSoroWillClient();
 
   const isTopUpValid = isTopUpAmountValid(topUpAmount);
@@ -308,6 +310,9 @@ export default function WillDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-3 print-section">
         <div>
           <h1 className="text-2xl font-bold text-will-light print-title">Will #{will.id}</h1>
+          <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium ${isOwner ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : isGuardian ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : isBeneficiary ? 'bg-will-purple/20 text-indigo-200 border-will-purple/40' : 'bg-white/10 text-will-light/60 border-white/20'}`}>
+            {role}
+          </span>
           <p className="text-sm text-will-light/50 print-text">
             Owner:{' '}
             <a
