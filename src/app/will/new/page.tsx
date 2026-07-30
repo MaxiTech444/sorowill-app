@@ -10,6 +10,7 @@ import { getSoroWillClient } from '@/lib/sorowill';
 import { formatError } from '@/lib/errors';
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
 import { getUserBalance } from '@/lib/balance';
+import { isValidAmount } from '@/lib/amount';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { validateGuardians } from '@/lib/guardianValidation';
 
@@ -656,7 +657,13 @@ export default function NewWillPage() {
               <div className="flex justify-between">
                 <dt className="text-will-light/60">Amount</dt>
                 <dd className="text-will-light">
-                  {amount ? formatUSDC(toStroops(amount)) : '0.00'} USDC
+                  {(() => {
+                    try {
+                      return amount ? formatUSDC(toStroops(amount)) : '0.00';
+                    } catch {
+                      return '0.00';
+                    }
+                  })()} USDC
                 </dd>
               </div>
               <div className="flex justify-between">
