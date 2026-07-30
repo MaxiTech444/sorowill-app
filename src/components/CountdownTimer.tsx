@@ -57,7 +57,11 @@ export function CountdownTimer({ deadline, label }: CountdownTimerProps) {
     }
 
     interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [deadline]);
 
   const overdue = secondsLeft <= 0;

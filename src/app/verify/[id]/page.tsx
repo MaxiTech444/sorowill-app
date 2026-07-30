@@ -9,14 +9,29 @@
 // is explicitly marketed as a wallet-free source of truth.
 export const dynamic = 'force-dynamic';
 
+import { type Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { formatDeadline, WillStatus } from '@sorowill/sdk';
-
 import { getContractId, getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { StatusBanner } from '@/components/StatusBanner';
 import { ShareVerification } from '@/components/ShareVerification';
 import { CopyAddress } from '@/components/CopyAddress';
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  let title = 'Verify Will';
+  let description = 'A public, read-only view of this will\'s on-chain state.';
+
+  try {
+    const will = await getSoroWillClient().getWill(params.id);
+    title = `Verify Will #${will.id}`;
+    description = `Status: ${will.status}. Locked balance: ${(Number(will.balance) / 1_000_000).toFixed(2)} USDC. ${will.beneficiaries.length} beneficiaries.`;
+  } catch {
+    // Fall back to generic metadata if the will fetch fails.
+  }
+
+  return { title, description };
+}
 
 /**
  * Returns true when the error clearly indicates the will does not exist on

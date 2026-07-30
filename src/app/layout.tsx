@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://sorowill.vercel.app'),
   title: 'SoroWill',
   description: 'Trustless on-chain inheritance on Stellar',
-  metadataBase: new URL('https://sorowill.vercel.app'),
   openGraph: {
     title: 'SoroWill',
     description: 'Trustless on-chain inheritance on Stellar',

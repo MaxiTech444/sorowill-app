@@ -10,7 +10,7 @@ import { toStroops } from '@sorowill/sdk';
  */
 export function isValidAmount(amount: string): boolean {
   const trimmed = amount.trim();
-  
+
   // Empty strings are handled at a higher level
   if (trimmed === '') {
     return false;
@@ -34,4 +34,13 @@ export function isValidAmount(amount: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Lightweight top-up amount validator used inline in the will detail UI.
+ * Matches the historical behavior of the previously exported helper.
+ */
+export function isTopUpAmountValid(amount: string): boolean {
+  const trimmed = amount.trim();
+  return trimmed !== '' && !isNaN(Number(trimmed)) && Number(trimmed) > 0;
 }

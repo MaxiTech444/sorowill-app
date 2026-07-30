@@ -76,7 +76,7 @@ export function WillCard({
             <>
               <span className="text-will-light/40">•</span>
               <span className="font-medium text-indigo-300">
-                Your share: {formatUSDC(BigInt(userShare.share))} USDC ({userShare.percentage}%)
+                Your share: {formatUSDC(BigInt(userShare.share))} USDC
               </span>
             </>
           ) : null}

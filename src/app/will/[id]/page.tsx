@@ -27,15 +27,12 @@ import { CountdownTimer } from '@/components/CountdownTimer';
 import { GuardianPanel } from '@/components/GuardianPanel';
 import { StatusBanner } from '@/components/StatusBanner';
 import { CopyAddress } from '@/components/CopyAddress';
+import { isTopUpAmountValid } from '@/lib/amount';
 
 interface ActivityEntry {
   action: string;
   txHash: string;
   at: Date;
-}
-
-function isValidWillId(id: string): boolean {
-  return /^\d+$/.test(id);
 }
 
 function nextCheckinDeadline(will: Will): Date {
@@ -287,6 +284,13 @@ export default function WillDetailPage() {
       <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-8 text-center">
         <h1 className="text-lg font-semibold text-red-300">Couldn&apos;t load this will</h1>
         <p className="mt-2 text-sm text-red-300/70">{error}</p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-4 rounded-full border border-red-400/40 px-4 py-2 text-sm text-red-300 transition hover:border-red-400/70"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -360,7 +364,18 @@ export default function WillDetailPage() {
 
       <StatusBanner status={will.status} />
 
-      {error ? <p className="text-sm text-red-400 print-hide">{error}</p> : null}
+      {error ? (
+        <div className="flex items-center justify-between rounded-xl border border-red-500/30 bg-red-500/10 p-4 print-hide">
+          <p className="text-sm text-red-300/80">{error}</p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="rounded-full border border-red-400/40 px-3 py-1.5 text-xs text-red-300 transition hover:border-red-400/70"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
 
       <div className="print-section grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -430,7 +445,7 @@ export default function WillDetailPage() {
           <>
             <button
               type="button"
-              onClick={() => setShowTopUp((s) => !s)}
+              onClick={() => { setError(null); setShowTopUp((s) => !s); }}
               className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
             >
               Top Up
@@ -443,19 +458,20 @@ export default function WillDetailPage() {
             >
               Release Early
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowEditBeneficiaries((s) => {
-                  const next = !s;
-                  showEditBeneficiariesRef.current = next;
-                  return next;
-                });
-              }}
-              className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
-            >
-              Update Beneficiaries
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setShowEditBeneficiaries((s) => {
+                    const next = !s;
+                    showEditBeneficiariesRef.current = next;
+                    return next;
+                  });
+                }}
+                className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 sm:w-auto"
+              >
+                Update Beneficiaries
+              </button>
             <button
               type="button"
               onClick={() => router.push(`/will/new?cloneFrom=${will.id}`)}
