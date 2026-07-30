@@ -14,7 +14,8 @@ import {
 } from '@sorowill/sdk';
 
 export function isTopUpAmountValid(topUpAmount: string): boolean {
-  return topUpAmount.trim() !== '' && !isNaN(Number(topUpAmount)) && Number(topUpAmount) > 0;
+  const num = Number(topUpAmount);
+  return topUpAmount.trim() !== '' && isFinite(num) && num > 0;
 }
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
