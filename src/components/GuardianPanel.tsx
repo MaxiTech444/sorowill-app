@@ -7,6 +7,7 @@ export interface GuardianPanelProps {
   guardians: string[];
   guardianVotes: number;
   willId?: string;
+  isOwner?: boolean;
   isGuardian?: boolean;
   isActive?: boolean;
   isCastingVote?: boolean;
@@ -18,6 +19,7 @@ export function GuardianPanel({
   guardians,
   guardianVotes,
   willId,
+  isOwner = false,
   isGuardian = false,
   isActive = false,
   isCastingVote = false,

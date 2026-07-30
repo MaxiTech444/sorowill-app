@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 import {
   calculateShares,
@@ -151,7 +151,7 @@ export default function WillDetailPage() {
   }, [willId, toast]);
 
   useEffect(() => {
-    safeGetPublicKey().then((key) => {
+    void safeGetPublicKey().then((key) => {
       if (isMounted.current) {
         setPublicKey(key);
       }
@@ -159,7 +159,7 @@ export default function WillDetailPage() {
   }, []);
 
   useEffect(() => {
-    refetch();
+    void refetch();
   }, [refetch]);
 
   function recordActivity(action: string, txHash: string) {
@@ -240,7 +240,7 @@ export default function WillDetailPage() {
   }
 
   // Quick client-side validation before hitting the RPC layer
-  if (!isValidWillId(willId)) {
+  if (!willId || /^\d+$/.test(willId) === false) {
     return (
       <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-8 text-center">
         <h1 className="text-lg font-semibold text-red-300">Invalid will ID</h1>

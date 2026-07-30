@@ -53,7 +53,7 @@ export function WalletConnect() {
     if (isSessionCleared()) {
       return;
     }
-    safeGetPublicKey().then((key) => {
+    void safeGetPublicKey().then((key) => {
       if (isMounted.current) {
         setPublicKey(key);
       }
@@ -74,7 +74,7 @@ export function WalletConnect() {
     }
   }
 
-  function handleClearSession() {
+  function handleDisconnect() {
     setSessionCleared(true);
     setPublicKey(null);
     setError(null);

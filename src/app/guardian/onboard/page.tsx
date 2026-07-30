@@ -17,7 +17,7 @@ function OnboardContent() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
 
   useEffect(() => {
-    safeGetPublicKey().then(setPublicKey);
+    void safeGetPublicKey().then(setPublicKey);
   }, []);
 
   useEffect(() => {

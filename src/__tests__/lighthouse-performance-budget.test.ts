@@ -6,8 +6,6 @@ describe('Lighthouse CI Performance Budget (Issue #23)', () => {
     seo: 90,
   }
 
-  const PAGES_TO_AUDIT = ['/dashboard', '/']
-
   describe('Performance Score Threshold', () => {
     it('should have a performance score budget defined', () => {
       expect(PERFORMANCE_BUDGET.performance).toBeDefined()

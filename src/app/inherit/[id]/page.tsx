@@ -56,7 +56,7 @@ export default function InheritPage() {
   }, [willId]);
 
   useEffect(() => {
-    safeGetPublicKey().then((key) => {
+    void safeGetPublicKey().then((key) => {
       if (isMounted.current) {
         setPublicKey(key);
       }
@@ -64,7 +64,7 @@ export default function InheritPage() {
   }, []);
 
   useEffect(() => {
-    refetch();
+    void refetch();
   }, [refetch]);
 
   // Quick client-side validation before hitting the RPC layer

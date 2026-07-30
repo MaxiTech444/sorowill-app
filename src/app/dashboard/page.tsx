@@ -152,7 +152,7 @@ export default function DashboardPage() {
   }, [publicKey, toast]);
 
   useEffect(() => {
-    safeGetPublicKey().then((key) => {
+    void safeGetPublicKey().then((key) => {
       if (!isMounted.current) {
         return;
       }
@@ -163,7 +163,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (publicKey) {
-      loadWills(publicKey);
+      void loadWills(publicKey);
     }
   }, [publicKey, loadWills]);
 
@@ -253,6 +253,7 @@ export default function DashboardPage() {
         ? (idx - 1 + tabs.length) % tabs.length
         : (idx + 1) % tabs.length;
       setTab(tabs[newIdx]);
+      setIsMultiSelectMode(false);
     }
   };
 
@@ -276,21 +277,6 @@ export default function DashboardPage() {
   );
 
   const isFiltering = search.trim() !== '' || statusFilter !== 'all';
-
-  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabName: Tab) => {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      event.preventDefault();
-      // Simple toggle navigation for keyboard accessibility
-      const newTab =
-        tabName === 'owned'
-          ? 'inheriting'
-          : tabName === 'inheriting'
-            ? 'guardianship'
-            : 'owned';
-      setTab(newTab);
-      setIsMultiSelectMode(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -335,31 +321,6 @@ export default function DashboardPage() {
               {isMultiSelectMode ? 'Cancel Multi-select' : 'Multi-select Mode'}
             </button>
           )}
-          <Link
-            href="/will/new"
-            className="rounded-full bg-will-purple px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-will-purple/90"
-          >
-            + New Will
-          </Link>
-        </div>
-  const activeList = (tab === 'owned' ? ownedWills : inheritingWills).filter(
-    (will) => matchesSearch(will, search) && (statusFilter === 'all' || will.status === statusFilter),
-  );
-  const isFiltering = search.trim() !== '' || statusFilter !== 'all';
-
-  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabName: Tab) => {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      event.preventDefault();
-      const newTab = tabName === 'owned' ? 'inheriting' : 'owned';
-      setTab(newTab);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <h1 className="text-2xl font-bold text-will-light">Dashboard</h1>
-        <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             onClick={handleManualRefresh}
@@ -371,7 +332,7 @@ export default function DashboardPage() {
           </button>
           <Link
             href="/will/new"
-            className="w-full rounded-full bg-will-purple px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-will-purple/90 sm:w-auto"
+            className="rounded-full bg-will-purple px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-will-purple/90"
           >
             + New Will
           </Link>

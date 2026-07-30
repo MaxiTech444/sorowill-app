@@ -26,7 +26,8 @@ export function StatsContent() {
         // Attempt to fetch protocol stats
         // Note: This depends on the contract exposing get_protocol_stats method
         try {
-          const protocolStats = await client.getProtocolStats?.();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const protocolStats = await (client as any).getProtocolStats?.();
           if (protocolStats) {
             setStats({
               totalWills: Number(protocolStats.totalWills || 0),
@@ -41,7 +42,7 @@ export function StatsContent() {
         }
 
         // Fallback: fetch wills sequentially to calculate stats
-        const wills: any[] = [];
+        const wills: { id: string; executionStarted?: boolean; amount?: string | bigint }[] = [];
         const promises = [];
         for (let i = 1; i <= 100; i++) {
           promises.push(
@@ -81,7 +82,7 @@ export function StatsContent() {
       }
     };
 
-    fetchStats();
+    void fetchStats();
   }, []);
 
   if (loading) {
