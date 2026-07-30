@@ -571,6 +571,8 @@ export default function DashboardPage() {
                     will={will}
                     onCheckIn={tab === 'owned' ? handleCheckIn : undefined}
                     checkingIn={checkingInId === will.id}
+                    connectedAddress={publicKey}
+                    showEntitledShare={tab === 'inheriting'}
                   />
                 </div>
               </div>
