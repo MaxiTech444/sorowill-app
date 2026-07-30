@@ -18,11 +18,28 @@ export const metadata: Metadata = {
     url: 'https://sorowill.vercel.app',
     siteName: 'SoroWill',
     type: 'website',
+    images: [
+      {
+        url: '/logo.svg',
+        width: 100,
+        height: 100,
+        alt: 'SoroWill Logo',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'SoroWill',
     description: 'Trustless on-chain inheritance on Stellar',
+    siteName: 'SoroWill',
+    images: [
+      {
+        url: '/logo.svg',
+        width: 100,
+        height: 100,
+        alt: 'SoroWill Logo',
+      },
+    ],
   },
   icons: {
     icon: '/icon.svg',
