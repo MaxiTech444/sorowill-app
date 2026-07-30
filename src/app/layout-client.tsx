@@ -9,7 +9,6 @@ import { NetworkMismatchBanner } from '@/components/NetworkMismatchBanner';
 import { NetworkSwitcher } from '@/components/NetworkSwitcher';
 import { ToastProvider } from '@/components/Toast';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
   return (
@@ -26,17 +25,17 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
             <Link href="/dashboard" className="hover:text-will-light">
               Dashboard
             </Link>
-            <Link href="/will/new" className="hover:text-will-light">
-              Create a Will
-            </Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <NetworkSwitcher />
-            <ThemeToggle />
-            <WalletConnect />
+            <nav className="hidden items-center gap-6 text-sm text-will-light/70 sm:flex">
+              <Link href="/dashboard" className="hover:text-will-light">
+                Dashboard
+              </Link>
+              <Link href="/will/new" className="hover:text-will-light">
+                Create a Will
+              </Link>
+            </nav>
+            <HeaderContextArea />
           </div>
-        </div>
-      </header>
+        </header>
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
       </ToastProvider>
     </ThemeProvider>
