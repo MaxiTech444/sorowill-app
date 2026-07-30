@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 
+import Image from 'next/image';
 import { WalletConnect } from '@/components/WalletConnect';
 import { NetworkMismatchBanner } from '@/components/NetworkMismatchBanner';
 import { NetworkSwitcher } from '@/components/NetworkSwitcher';
@@ -18,17 +19,7 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
         <NetworkMismatchBanner />
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-will-light">
-            <svg viewBox="0 0 100 100" className="h-6 w-6 shrink-0" aria-hidden="true">
-              <circle cx="50" cy="50" r="42" fill="none" stroke="#7D00FF" strokeWidth="7" />
-              <path
-                d="M0,50 L22,50 L34,26 L46,74 L58,26 L70,50 L100,50"
-                fill="none"
-                stroke="#08b5e5"
-                strokeWidth="7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Image src="/logo.svg" alt="SoroWill Logo" width={24} height={24} className="h-6 w-6 shrink-0" priority />
             Soro<span className="text-will-purple">Will</span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-will-light/70 sm:flex">

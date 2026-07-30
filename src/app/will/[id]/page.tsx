@@ -33,6 +33,10 @@ interface ActivityEntry {
   at: Date;
 }
 
+function isValidWillId(id: string): boolean {
+  return /^\d+$/.test(id);
+}
+
 function nextCheckinDeadline(will: Will): Date {
   return new Date(will.lastCheckin.getTime() + will.checkinPeriodDays * 86_400 * 1000);
 }
