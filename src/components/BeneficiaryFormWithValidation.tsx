@@ -2,7 +2,6 @@
 
 import type { Beneficiary } from '@sorowill/sdk';
 import { validateBeneficiaries } from '@sorowill/sdk';
-import { useState } from 'react';
 
 export interface BeneficiaryFormWithValidationProps {
   value: Beneficiary[];
@@ -36,8 +35,6 @@ function equalSplit(count: number): number[] {
 }
 
 export function BeneficiaryFormWithValidation({ value, onChange }: BeneficiaryFormWithValidationProps) {
-  const [fieldErrors, setFieldErrors] = useState<Record<number, string>>({});
-
   const total = value.reduce((sum, b) => sum + b.percentage, 0);
   const isValid = validateBeneficiaries(value) && value.every((b) => b.address.trim() !== '');
   const addressErrors = getAddressErrors(value);
@@ -45,9 +42,6 @@ export function BeneficiaryFormWithValidation({ value, onChange }: BeneficiaryFo
   function updateRow(index: number, patch: Partial<Beneficiary>) {
     const updated = value.map((row, i) => (i === index ? { ...row, ...patch } : row));
     onChange(updated);
-
-    const newErrors = getAddressErrors(updated);
-    setFieldErrors(newErrors);
   }
 
   function addRow() {
@@ -57,9 +51,6 @@ export function BeneficiaryFormWithValidation({ value, onChange }: BeneficiaryFo
   function removeRow(index: number) {
     const updated = value.filter((_, i) => i !== index);
     onChange(updated);
-
-    const newErrors = getAddressErrors(updated);
-    setFieldErrors(newErrors);
   }
 
   function applyEqualSplit() {
@@ -112,9 +103,16 @@ export function BeneficiaryFormWithValidation({ value, onChange }: BeneficiaryFo
                     min={0}
                     max={100}
                     value={beneficiary.percentage}
-                    onChange={(event) =>
-                      updateRow(index, { percentage: Number(event.target.value) || 0 })
-                    }
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      if (raw === '') {
+                        updateRow(index, { percentage: 0 });
+                        return;
+                      }
+                      const val = Number(raw);
+                      const clamped = isNaN(val) ? 0 : Math.max(0, Math.min(100, Math.floor(val)));
+                      updateRow(index, { percentage: clamped });
+                    }}
                     className="w-20 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-right text-sm text-will-light focus:border-will-purple focus:outline-none"
                   />
                 </div>

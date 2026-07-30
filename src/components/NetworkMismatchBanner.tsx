@@ -60,7 +60,7 @@ export function NetworkMismatchBanner() {
       }
     }
 
-    check();
+    void check();
 
     return () => {
       cancelled = true;

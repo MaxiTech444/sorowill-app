@@ -16,12 +16,35 @@
 .DS_Store
 *.pem
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
-# testing
+# testing — unit snapshots
+**/__snapshots__/
+tests/unit/__snapshots__/
+src/__tests__/__snapshots__/
+
+# testing — playwright / e2e output
 /test-results/
 /playwright-report/
-/tests/e2e/__snapshots__/*-linux.png
+/blob-report/
+tests/e2e/__snapshots__/
+# Visual-regression baseline images generated on Linux CI are not committed
+tests/e2e/__snapshots__/*-linux.png
+
+# coverage reports
+/coverage/
+/.nyc_output/
+
+# Storybook build output
+/storybook-static/
+
+# editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo

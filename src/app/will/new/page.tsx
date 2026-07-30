@@ -7,12 +7,18 @@ import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '
 
 import { truncateAddress, safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
+import { formatError } from '@/lib/errors';
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
 import { getUserBalance } from '@/lib/balance';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
+import { validateGuardians } from '@/lib/guardianValidation';
 
 const CHECKIN_OPTIONS = [30, 60, 90, 180, 365];
 const GRACE_OPTIONS = [3, 7, 14];
+
+// The contract's persistent storage TTL is bumped to ~60 days' worth of ledgers on each write.
+// Check-in periods exceeding this window risk storage archival before the owner's next check-in.
+const SAFE_CHECKIN_WINDOW_DAYS = 60;
 
 const STEP_LABELS = ['Amount', 'Beneficiaries', 'Timing', 'Guardians', 'Review'];
 const STORAGE_KEY = 'sorowill-form-draft';
@@ -27,51 +33,9 @@ interface FormState {
   guardians: string[];
 }
 
-/** True when `address` is a well-formed Stellar ED25519 public key. */
-function isValidStellarAddress(address: string): boolean {
-  return /^G[A-Z2-7]{55}$/.test(address);
-}
-
-/** Validate the guardian list, returning an array of per-row error messages
- *  (empty string = no error for that row) plus an optional top-level error. */
-function validateGuardians(
-  guardians: string[],
-  ownerAddress: string | null,
-): { rowErrors: string[]; topError: string | null } {
-  const rowErrors: string[] = guardians.map(() => '');
-  let topError: string | null = null;
-
-  const seen = new Set<string>();
-
-  for (let i = 0; i < guardians.length; i++) {
-    const g = guardians[i].trim();
-    if (g === '') continue; // blank rows are warned separately
-
-    if (!isValidStellarAddress(g)) {
-      rowErrors[i] = 'Not a valid Stellar address (must start with G and be 56 characters)';
-      continue;
-    }
-
-    if (ownerAddress && g === ownerAddress) {
-      rowErrors[i] = 'A guardian cannot be the same as the will owner';
-      continue;
-    }
-
-    if (seen.has(g)) {
-      rowErrors[i] = 'Duplicate guardian address';
-      continue;
-    }
-
-    seen.add(g);
-  }
-
-  // Top-level error when any non-blank row has an issue.
-  const hasRowErrors = rowErrors.some((e, i) => e !== '' && guardians[i].trim() !== '');
-  if (hasRowErrors) {
-    topError = 'Please fix the guardian address errors above before continuing.';
-  }
-
-  return { rowErrors, topError };
+/** True when a check-in period exceeds the contract's safe storage TTL window. */
+function isUnsafeCheckinPeriod(days: number): boolean {
+  return days > SAFE_CHECKIN_WINDOW_DAYS;
 }
 
 // Soroban contract strkey: 'C' followed by 55 base32 chars (RFC 4648 alphabet,
@@ -122,7 +86,7 @@ export default function NewWillPage() {
 
   // Fetch the connected wallet address once so we can reject it as a guardian.
   useEffect(() => {
-    safeGetPublicKey().then(setOwnerAddress);
+    void safeGetPublicKey().then(setOwnerAddress);
   }, []);
 
   useEffect(() => {
@@ -154,7 +118,7 @@ export default function NewWillPage() {
       }
     };
 
-    fetchBalance();
+    void fetchBalance();
   }, []);
 
   useEffect(() => {
@@ -171,7 +135,7 @@ export default function NewWillPage() {
           setCloneLoading(false);
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : 'Failed to load will to clone');
+          setError(formatError(err));
           setCloneLoading(false);
         });
     }
@@ -179,7 +143,7 @@ export default function NewWillPage() {
 
   const tokenValid = CONTRACT_ADDRESS_PATTERN.test(token.trim());
   const showTokenError = token.trim() !== '' && !tokenValid;
-  const amountValid = amount.trim() !== '' && Number(amount) > 0 && tokenValid;
+  const isAmountValid = amount.trim() !== '' && Number(amount) > 0 && tokenValid;
   useEffect(() => {
     const state: FormState = {
       step,
@@ -222,7 +186,6 @@ export default function NewWillPage() {
     }
   }
 
-  const amountValid = amount.trim() !== '' && Number(amount) > 0 && token.trim() !== '';
   const beneficiariesValid = validateBeneficiaries(beneficiaries) && beneficiaries.every((b) => b.address.trim() !== '');
 
   const { rowErrors: guardianRowErrors, topError: guardianTopError } = validateGuardians(guardians, ownerAddress);
@@ -236,6 +199,32 @@ export default function NewWillPage() {
   const blankGuardianIndices = guardians
     .map((g, i) => (g.trim() === '' ? i : -1))
     .filter((i) => i !== -1);
+
+  const guardianBeneficiaryOverlap = useMemo(() => {
+    const beneficiaryAddresses = new Set(
+      beneficiaries.map((b) => b.address.trim()).filter((a) => a !== ''),
+    );
+    if (beneficiaryAddresses.size === 0) return [];
+
+    const overlapped = new Set<string>();
+    guardians.forEach((g, i) => {
+      const trimmed = g.trim();
+      if (trimmed === '') return;
+
+      if (beneficiaryAddresses.has(trimmed)) {
+        overlapped.add(trimmed);
+        return;
+      }
+
+      const id = stableGuardianIds.get(i);
+      const resolved = id ? resolvedGuardians.get(id) : undefined;
+      if (resolved && beneficiaryAddresses.has(resolved)) {
+        overlapped.add(trimmed);
+      }
+    });
+
+    return [...overlapped];
+  }, [guardians, beneficiaries, resolvedGuardians, stableGuardianIds]);
 
   function updateGuardian(index: number, address: string) {
     setGuardians((prev) => prev.map((g, i) => (i === index ? address : g)));
@@ -286,7 +275,7 @@ export default function NewWillPage() {
         (prev) =>
           new Map(prev).set(
             id,
-            err instanceof Error ? err.message : 'Failed to resolve address',
+            formatError(err),
           ),
       );
       setResolvedGuardians((prev) => {
@@ -312,6 +301,14 @@ export default function NewWillPage() {
   async function handleSubmit() {
     setSubmitting(true);
     setError(null);
+    
+    // Validate guardians before submission
+    if (guardianTopError !== null) {
+      setError('Please fix the guardian address errors before submitting.');
+      setSubmitting(false);
+      return;
+    }
+    
     try {
       const client = getSoroWillClient();
       const { willId } = await client.createWill({
@@ -327,7 +324,7 @@ export default function NewWillPage() {
       }
       router.push(`/will/${willId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create will');
+      setError(formatError(err));
       setSubmitting(false);
     }
   }
@@ -417,7 +414,14 @@ export default function NewWillPage() {
                   min={0}
                   step="0.01"
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    if (val !== '' && Number(val) < 0) {
+                      setAmount('0');
+                    } else {
+                      setAmount(val);
+                    }
+                  }}
                   placeholder="1000.00"
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
                   aria-describedby="amount-help"
@@ -479,6 +483,14 @@ export default function NewWillPage() {
                   className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
                 />
               </div>
+              {isUnsafeCheckinPeriod(checkinPeriodDays) && (
+                <div className="rounded-lg border border-amber-400/40 bg-amber-400/5 px-3 py-3" role="status">
+                  <p className="text-xs font-medium text-amber-400">Storage archival risk</p>
+                  <p className="mt-1 text-xs text-amber-400/90">
+                    This {checkinPeriodDays}-day check-in period exceeds the contract&apos;s storage safety window ({SAFE_CHECKIN_WINDOW_DAYS} days). Your will&apos;s on-chain data may be archived before your next check-in, making it inaccessible. Consider choosing a shorter period, or plan to check in more frequently.
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <legend className="text-sm font-medium text-will-light">Grace period</legend>
@@ -611,12 +623,27 @@ export default function NewWillPage() {
             );
             })}
 
+            {/* Top-level validation error when guardians have issues */}
+            {guardianTopError && (
+              <p className="rounded-lg border border-red-400/40 bg-red-400/10 px-3 py-2 text-xs text-red-400" role="alert">
+                {guardianTopError}
+              </p>
+            )}
+
             {/* Summary warning when blank rows exist alongside valid rows */}
             {blankGuardianIndices.length > 0 && guardians.some((g) => g.trim() !== '') ? (
               <p className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
                 {blankGuardianIndices.length === 1
                   ? '1 empty guardian row will not be included in the will.'
                   : `${blankGuardianIndices.length} empty guardian rows will not be included in the will.`}
+              </p>
+            ) : null}
+
+            {guardianBeneficiaryOverlap.length > 0 ? (
+              <p className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
+                {guardianBeneficiaryOverlap.length === 1
+                  ? '1 guardian is also listed as a beneficiary — this changes who can vote to trigger an early release of funds they themselves stand to receive.'
+                  : `${guardianBeneficiaryOverlap.length} guardians are also listed as beneficiaries — this changes who can vote to trigger an early release of funds they themselves stand to receive.`}
               </p>
             ) : null}
           </fieldset>
@@ -663,6 +690,16 @@ export default function NewWillPage() {
                         </div>
                       ))}
                   </dd>
+                  <p className="mt-2 text-xs text-will-light/50">
+                    Any 2 of your guardians can force an early release if you&apos;re incapacitated.
+                  </p>
+                  {guardianBeneficiaryOverlap.length > 0 ? (
+                    <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
+                      {guardianBeneficiaryOverlap.length === 1
+                        ? '1 guardian is also listed as a beneficiary — this changes who can vote to trigger an early release of funds they themselves stand to receive.'
+                        : `${guardianBeneficiaryOverlap.length} guardians are also listed as beneficiaries — this changes who can vote to trigger an early release of funds they themselves stand to receive.`}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </dl>
@@ -695,7 +732,7 @@ export default function NewWillPage() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || guardianTopError !== null}
             className="w-full rounded-full bg-will-purple px-5 py-2 text-sm font-medium text-white transition hover:bg-will-purple/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {submitting ? 'Creating…' : 'Create Will'}
