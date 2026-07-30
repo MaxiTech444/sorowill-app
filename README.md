@@ -25,6 +25,8 @@ SoroWill is a trustless, on-chain inheritance protocol on Stellar Soroban. This 
 - **Tailwind CSS 3**
 - **[@sorowill/sdk](../sorowill-sdk)** for all contract interaction and Freighter wallet handling
 
+> **Wallet support:** This app currently only supports the **[Freighter](https://freighter.app/)** browser extension. Other Stellar wallets (Albedo, xBull, Rabet, …) are not yet supported — you will not be able to connect them. Multi-wallet support is tracked in the SDK's wallet-adapter work; see the [`@sorowill/sdk`](https://www.npmjs.com/package/@sorowill/sdk) package for progress.
+
 ## Local Setup
 
 ```bash

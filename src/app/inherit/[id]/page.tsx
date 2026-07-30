@@ -10,6 +10,7 @@ import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { formatError } from '@/lib/errors';
 import { useToast } from '@/components/Toast';
 import { StatusBanner } from '@/components/StatusBanner';
+import { CopyAddress } from '@/components/CopyAddress';
 
 function isValidWillId(id: string): boolean {
   return /^\d+$/.test(id);
@@ -163,7 +164,7 @@ export default function InheritPage() {
         <ul className="mt-2 space-y-1.5">
           {shares.map((row) => (
             <li key={row.address} className="flex justify-between text-sm">
-              <span className="font-mono text-will-light/80">{truncateAddress(row.address)}</span>
+              <CopyAddress address={row.address} className="text-will-light/80" />
               <span className="text-will-light">{formatUSDC(BigInt(row.share))} USDC</span>
             </li>
           ))}
@@ -201,6 +202,7 @@ export default function InheritPage() {
           >
             {truncateAddress(claimTxHash)}
           </a>
+          <CopyAddress address={claimTxHash} label={null} className="ml-1" />
         </p>
       ) : null}
     </div>

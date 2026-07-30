@@ -25,6 +25,7 @@ import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { GuardianPanel } from '@/components/GuardianPanel';
 import { StatusBanner } from '@/components/StatusBanner';
+import { CopyAddress } from '@/components/CopyAddress';
 
 interface ActivityEntry {
   action: string;
@@ -313,6 +314,7 @@ export default function WillDetailPage() {
             >
               {truncateAddress(will.owner)}
             </a>
+            <CopyAddress address={will.owner} label={null} className="ml-1" />
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -628,6 +630,7 @@ export default function WillDetailPage() {
                   >
                     {truncateAddress(row.address)}
                   </a>
+                  <CopyAddress address={row.address} label={null} className="ml-1" />
                 </td>
                 <td className="py-2 text-will-light/70">{beneficiaryMap.get(row.address)}%</td>
                 <td className="py-2 text-will-light">{formatUSDC(BigInt(row.share))} USDC</td>
@@ -674,6 +677,7 @@ export default function WillDetailPage() {
                 >
                   {truncateAddress(entry.txHash)}
                 </a>
+                <CopyAddress address={entry.txHash} label={null} className="ml-1" />
               </li>
             ))}
           </ul>
