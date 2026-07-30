@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getSoroWillClient } from '@/lib/sorowill';
+import { formatError } from '@/lib/errors';
 
 interface ProtocolStats {
   totalWills: number;
@@ -26,7 +27,7 @@ export function StatsContent() {
         // Attempt to fetch protocol stats
         // Note: This depends on the contract exposing get_protocol_stats method
         try {
-          const protocolStats = await client.getProtocolStats?.();
+          const protocolStats = await (client as any).getProtocolStats?.();
           if (protocolStats) {
             setStats({
               totalWills: Number(protocolStats.totalWills || 0),
@@ -41,7 +42,7 @@ export function StatsContent() {
         }
 
         // Fallback: fetch wills sequentially to calculate stats
-        const wills: any[] = [];
+        const wills: { id: string; executionStarted?: boolean; amount?: string | bigint }[] = [];
         const promises = [];
         for (let i = 1; i <= 100; i++) {
           promises.push(
@@ -75,13 +76,13 @@ export function StatsContent() {
           completedInheritances,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch stats');
+        setError(formatError(err));
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStats();
+    void fetchStats();
   }, []);
 
   if (loading) {

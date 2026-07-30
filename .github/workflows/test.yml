@@ -54,6 +54,9 @@ jobs:
       - name: Unit tests
         run: npm run test
 
+      - name: Contract smoke test (mocked SDK)
+        run: npx vitest run tests/unit/contract-smoke.test.ts --reporter=verbose
+
   e2e-and-a11y:
     runs-on: ubuntu-latest
     env:

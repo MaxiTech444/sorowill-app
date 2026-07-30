@@ -34,7 +34,6 @@ describe('Wallet Switch Detection Mid-Session (Issue #25)', () => {
       const accountB = 'GBBD47UZQ5IAMJ7MVEJFOKJZD2DGZPVJMXQFBZX3VBQFAMR7Y7QGKLM'
 
       let mockCurrentAccount = accountA
-      const pollInterval = 1000
 
       const pollForAccountChange = async (): Promise<string | null> => {
         if (mockCurrentAccount !== accountA) {
@@ -68,7 +67,7 @@ describe('Wallet Switch Detection Mid-Session (Issue #25)', () => {
     })
 
     it('should clear cached data for previous account', () => {
-      const cache: Record<string, any[]> = {
+      const cache: Record<string, unknown[]> = {
         ACCOUNT_A: [{ id: '1', name: 'Will A' }],
       }
 

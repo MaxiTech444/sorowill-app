@@ -11,7 +11,7 @@ export function WalletConnectWithSessionPersistence() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    safeGetPublicKey().then(setPublicKey);
+    void safeGetPublicKey().then(setPublicKey);
   }, []);
 
   useEffect(() => {

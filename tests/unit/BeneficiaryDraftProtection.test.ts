@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // We test the core logic: when showEditBeneficiaries is open,
 // a refetch should NOT overwrite draftBeneficiaries.
