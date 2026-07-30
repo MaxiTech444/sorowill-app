@@ -7,6 +7,7 @@ import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '
 
 import { truncateAddress, safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
+import { formatError } from '@/lib/errors';
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
 import { getUserBalance } from '@/lib/balance';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
@@ -134,7 +135,7 @@ export default function NewWillPage() {
           setCloneLoading(false);
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : 'Failed to load will to clone');
+          setError(formatError(err));
           setCloneLoading(false);
         });
     }
@@ -142,6 +143,7 @@ export default function NewWillPage() {
 
   const tokenValid = CONTRACT_ADDRESS_PATTERN.test(token.trim());
   const showTokenError = token.trim() !== '' && !tokenValid;
+  const isAmountValid = amount.trim() !== '' && Number(amount) > 0 && tokenValid;
   useEffect(() => {
     const state: FormState = {
       step,
@@ -184,7 +186,6 @@ export default function NewWillPage() {
     }
   }
 
-  const amountValid = amount.trim() !== '' && Number(amount) > 0 && token.trim() !== '';
   const beneficiariesValid = validateBeneficiaries(beneficiaries) && beneficiaries.every((b) => b.address.trim() !== '');
 
   const { rowErrors: guardianRowErrors, topError: guardianTopError } = validateGuardians(guardians, ownerAddress);
@@ -198,6 +199,32 @@ export default function NewWillPage() {
   const blankGuardianIndices = guardians
     .map((g, i) => (g.trim() === '' ? i : -1))
     .filter((i) => i !== -1);
+
+  const guardianBeneficiaryOverlap = useMemo(() => {
+    const beneficiaryAddresses = new Set(
+      beneficiaries.map((b) => b.address.trim()).filter((a) => a !== ''),
+    );
+    if (beneficiaryAddresses.size === 0) return [];
+
+    const overlapped = new Set<string>();
+    guardians.forEach((g, i) => {
+      const trimmed = g.trim();
+      if (trimmed === '') return;
+
+      if (beneficiaryAddresses.has(trimmed)) {
+        overlapped.add(trimmed);
+        return;
+      }
+
+      const id = stableGuardianIds.get(i);
+      const resolved = id ? resolvedGuardians.get(id) : undefined;
+      if (resolved && beneficiaryAddresses.has(resolved)) {
+        overlapped.add(trimmed);
+      }
+    });
+
+    return [...overlapped];
+  }, [guardians, beneficiaries, resolvedGuardians, stableGuardianIds]);
 
   function updateGuardian(index: number, address: string) {
     setGuardians((prev) => prev.map((g, i) => (i === index ? address : g)));
@@ -248,7 +275,7 @@ export default function NewWillPage() {
         (prev) =>
           new Map(prev).set(
             id,
-            err instanceof Error ? err.message : 'Failed to resolve address',
+            formatError(err),
           ),
       );
       setResolvedGuardians((prev) => {
@@ -297,7 +324,7 @@ export default function NewWillPage() {
       }
       router.push(`/will/${willId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create will');
+      setError(formatError(err));
       setSubmitting(false);
     }
   }
@@ -387,7 +414,14 @@ export default function NewWillPage() {
                   min={0}
                   step="0.01"
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    if (val !== '' && Number(val) < 0) {
+                      setAmount('0');
+                    } else {
+                      setAmount(val);
+                    }
+                  }}
                   placeholder="1000.00"
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light placeholder:text-will-light/40 focus:border-will-purple focus:outline-none"
                   aria-describedby="amount-help"
@@ -604,6 +638,14 @@ export default function NewWillPage() {
                   : `${blankGuardianIndices.length} empty guardian rows will not be included in the will.`}
               </p>
             ) : null}
+
+            {guardianBeneficiaryOverlap.length > 0 ? (
+              <p className="rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
+                {guardianBeneficiaryOverlap.length === 1
+                  ? '1 guardian is also listed as a beneficiary — this changes who can vote to trigger an early release of funds they themselves stand to receive.'
+                  : `${guardianBeneficiaryOverlap.length} guardians are also listed as beneficiaries — this changes who can vote to trigger an early release of funds they themselves stand to receive.`}
+              </p>
+            ) : null}
           </fieldset>
         ) : null}
 
@@ -648,6 +690,16 @@ export default function NewWillPage() {
                         </div>
                       ))}
                   </dd>
+                  <p className="mt-2 text-xs text-will-light/50">
+                    Any 2 of your guardians can force an early release if you&apos;re incapacitated.
+                  </p>
+                  {guardianBeneficiaryOverlap.length > 0 ? (
+                    <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
+                      {guardianBeneficiaryOverlap.length === 1
+                        ? '1 guardian is also listed as a beneficiary — this changes who can vote to trigger an early release of funds they themselves stand to receive.'
+                        : `${guardianBeneficiaryOverlap.length} guardians are also listed as beneficiaries — this changes who can vote to trigger an early release of funds they themselves stand to receive.`}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </dl>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { truncateAddress } from '@/lib/freighter';
+import { CopyAddress } from './CopyAddress';
 
 const GUARDIAN_THRESHOLD = 2;
 
@@ -54,6 +54,8 @@ export function GuardianPanel({
     }
   };
 
+  const hasEnoughGuardians = guardians.length >= GUARDIAN_THRESHOLD;
+
   return (
     <section className="rounded-xl border border-white/10 bg-white/5 p-4" aria-labelledby="guardians-heading">
       <div className="flex items-center justify-between">
@@ -85,7 +87,7 @@ export function GuardianPanel({
       <ul className="mt-3 space-y-1.5" aria-label="Guardian addresses">
         {guardians.map((guardian, index) => (
           <li key={guardian} className="flex items-center justify-between font-mono text-sm text-will-light/80">
-            <span>{truncateAddress(guardian)}</span>
+            <CopyAddress address={guardian} />
             {isOwner && willId ? (
               <button
                 type="button"
@@ -111,7 +113,14 @@ export function GuardianPanel({
       ) : null}
       {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
       <p className="mt-2 text-xs text-will-light/50">
-        Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.
+        {hasEnoughGuardians ? (
+          <>Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.</>
+        ) : (
+          <>
+            <span className="font-medium text-amber-400">Guardian quorum can never be reached</span> with the current guardian count.{' '}
+            {guardians.length} guardian{guardians.length === 1 ? '' : 's'} configured; this will needs at least {GUARDIAN_THRESHOLD} guardians to enable early release.
+          </>
+        )}
       </p>
     </section>
   );

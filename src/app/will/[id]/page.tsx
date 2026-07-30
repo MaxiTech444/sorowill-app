@@ -13,18 +13,28 @@ import {
   type Will,
 } from '@sorowill/sdk';
 
+export function isTopUpAmountValid(topUpAmount: string): boolean {
+  return topUpAmount.trim() !== '' && !isNaN(Number(topUpAmount)) && Number(topUpAmount) > 0;
+}
+
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
+import { formatError } from '@/lib/errors';
 import { useToast } from '@/components/Toast';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { GuardianPanel } from '@/components/GuardianPanel';
 import { StatusBanner } from '@/components/StatusBanner';
+import { CopyAddress } from '@/components/CopyAddress';
 
 interface ActivityEntry {
   action: string;
   txHash: string;
   at: Date;
+}
+
+function isValidWillId(id: string): boolean {
+  return /^\d+$/.test(id);
 }
 
 function nextCheckinDeadline(will: Will): Date {
@@ -39,7 +49,7 @@ function graceDeadline(will: Will): Date | null {
 }
 
 function getGuardianVoteErrorMessage(err: unknown): string {
-  const message = err instanceof Error ? err.message : String(err);
+  const message = formatError(err);
   const normalized = message.toLowerCase();
 
   if (normalized.includes('already voted')) {
@@ -50,7 +60,7 @@ function getGuardianVoteErrorMessage(err: unknown): string {
     return 'Only listed guardians can cast a vote for this will.';
   }
 
-  return err instanceof Error ? err.message : 'Guardian vote failed';
+  return formatError(err);
 }
 
 function formatTimeAgo(date: Date): string {
@@ -64,6 +74,10 @@ function formatTimeAgo(date: Date): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function isValidWillId(id: string): boolean {
+  return /^\d+$/.test(id);
 }
 
 export default function WillDetailPage() {
@@ -124,7 +138,7 @@ export default function WillDetailPage() {
       if (!isMounted.current) {
         return;
       }
-      setError(err instanceof Error ? err.message : 'Failed to load will');
+      setError(formatError(err));
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -142,7 +156,7 @@ export default function WillDetailPage() {
       setError(null);
       toast.success('Data refreshed');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to refresh data';
+      const message = formatError(err);
       setError(message);
       toast.error(message);
     } finally {
@@ -177,7 +191,7 @@ export default function WillDetailPage() {
       const verifyUrl = `${window.location.origin}/verify/${will.id}`;
       await downloadWillCertificate(will, verifyUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export certificate');
+      setError(formatError(err));
     } finally {
       setExportingCertificate(false);
     }
@@ -197,7 +211,7 @@ export default function WillDetailPage() {
       const actionLabel = name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       toast.success(`${actionLabel} successful`);
     } catch (err) {
-      const message = errorMessage ? errorMessage(err) : (err instanceof Error ? err.message : `${name} failed`);
+      const message = errorMessage ? errorMessage(err) : formatError(err);
       setError(message);
       toast.error(message);
     } finally {
@@ -232,7 +246,7 @@ export default function WillDetailPage() {
       setReminderStatus(`Reminder enabled for ${payload.subscription.email}.`);
       setReminderEmail('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to register reminder';
+      const message = formatError(err);
       setReminderStatus(message);
     } finally {
       setReminderPending(false);
@@ -276,7 +290,11 @@ export default function WillDetailPage() {
 
   const isOwner = publicKey === will.owner;
   const isGuardian = !!publicKey && will.guardians.includes(publicKey);
+  const isBeneficiary = !!publicKey && will.beneficiaries.some((b) => b.address === publicKey);
+  const role = isOwner ? 'Owner' : isGuardian ? 'Guardian' : isBeneficiary ? 'Beneficiary' : 'Viewing as guest';
   const client = getSoroWillClient();
+
+  const isTopUpValid = isTopUpAmountValid(topUpAmount);
 
   const checkinDeadline = nextCheckinDeadline(will);
   const checkinOverdue = will.status === WillStatus.Active && Date.now() >= checkinDeadline.getTime();
@@ -292,6 +310,9 @@ export default function WillDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-3 print-section">
         <div>
           <h1 className="text-2xl font-bold text-will-light print-title">Will #{will.id}</h1>
+          <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-medium ${isOwner ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : isGuardian ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : isBeneficiary ? 'bg-will-purple/20 text-indigo-200 border-will-purple/40' : 'bg-white/10 text-will-light/60 border-white/20'}`}>
+            {role}
+          </span>
           <p className="text-sm text-will-light/50 print-text">
             Owner:{' '}
             <a
@@ -302,6 +323,7 @@ export default function WillDetailPage() {
             >
               {truncateAddress(will.owner)}
             </a>
+            <CopyAddress address={will.owner} label={null} className="ml-1" />
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -479,6 +501,7 @@ export default function WillDetailPage() {
           className="print-hide rounded-xl border border-white/10 bg-white/5 p-4"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (!isTopUpValid) return;
             await runAction('top_up', () => client.topUp(will.id, toStroops(topUpAmount).toString()));
             setTopUpAmount('');
             setShowTopUp(false);
@@ -494,13 +517,20 @@ export default function WillDetailPage() {
               min={0}
               step="0.01"
               value={topUpAmount}
-              onChange={(event) => setTopUpAmount(event.target.value)}
+              onChange={(event) => {
+                const val = event.target.value;
+                if (val !== '' && Number(val) < 0) {
+                  setTopUpAmount('0');
+                } else {
+                  setTopUpAmount(val);
+                }
+              }}
               className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
               aria-label="Top up amount in USDC"
             />
             <button
               type="submit"
-              disabled={busyAction !== null || !topUpAmount}
+              disabled={busyAction !== null || !isTopUpValid}
               className="rounded-full bg-will-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-60 sm:w-auto"
             >
               Confirm
@@ -523,7 +553,14 @@ export default function WillDetailPage() {
                 min={0}
                 step="0.01"
                 value={earlyReleaseAmount}
-                onChange={(event) => setEarlyReleaseAmount(event.target.value)}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  if (val !== '' && Number(val) < 0) {
+                    setEarlyReleaseAmount('0');
+                  } else {
+                    setEarlyReleaseAmount(val);
+                  }
+                }}
                 placeholder="0.00"
                 className="mt-1 w-full rounded-lg border border-will-purple/30 bg-will-purple/5 px-3 py-2 text-sm text-will-light focus:border-will-purple focus:outline-none"
               />
@@ -602,6 +639,7 @@ export default function WillDetailPage() {
                   >
                     {truncateAddress(row.address)}
                   </a>
+                  <CopyAddress address={row.address} label={null} className="ml-1" />
                 </td>
                 <td className="py-2 text-will-light/70">{beneficiaryMap.get(row.address)}%</td>
                 <td className="py-2 text-will-light">{formatUSDC(BigInt(row.share))} USDC</td>
@@ -612,7 +650,6 @@ export default function WillDetailPage() {
       </div>
 
       <div className="print-hide">
-        <GuardianPanel guardians={will.guardians} guardianVotes={will.guardianVotes} isOwner={isOwner} willId={will.id} />
         <GuardianPanel
           guardians={will.guardians}
           guardianVotes={will.guardianVotes}
@@ -649,6 +686,7 @@ export default function WillDetailPage() {
                 >
                   {truncateAddress(entry.txHash)}
                 </a>
+                <CopyAddress address={entry.txHash} label={null} className="ml-1" />
               </li>
             ))}
           </ul>

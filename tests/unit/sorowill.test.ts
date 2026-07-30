@@ -177,4 +177,19 @@ describe('sorowill.ts helpers', () => {
       });
     });
   });
+
+  describe('getSoroWillClient caching and invalidation', () => {
+    it('should return a SoroWillClient singleton and reset it successfully', async () => {
+      process.env.NEXT_PUBLIC_CONTRACT_ID = 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4';
+      const { getSoroWillClient, resetSoroWillClient } = await import('@/lib/sorowill');
+      
+      const client1 = getSoroWillClient();
+      const client2 = getSoroWillClient();
+      expect(client1).toBe(client2);
+      
+      resetSoroWillClient();
+      const client3 = getSoroWillClient();
+      expect(client1).not.toBe(client3);
+    });
+  });
 });

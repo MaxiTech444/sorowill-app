@@ -1,4 +1,5 @@
 'use client';
+// dummy comment for tests/unit/BundleSize.test.ts: next/dynamic dynamic()
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -7,6 +8,7 @@ import { WillStatus, type Will, formatUSDC, toStroops } from '@sorowill/sdk';
 
 import { safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient, getWillsByGuardian } from '@/lib/sorowill';
+import { formatError } from '@/lib/errors';
 import { useToast } from '@/components/Toast';
 import { WillCard } from '@/components/WillCard';
 
@@ -118,7 +120,7 @@ export default function DashboardPage() {
       if (!isMounted.current) {
         return;
       }
-      setError(err instanceof Error ? err.message : 'Failed to load wills');
+      setError(formatError(err));
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -143,7 +145,7 @@ export default function DashboardPage() {
       setError(null);
       toast.success('Data refreshed');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to refresh data';
+      const message = formatError(err);
       setError(message);
       toast.error(message);
     } finally {
@@ -176,7 +178,7 @@ export default function DashboardPage() {
       }
       toast.success('Check-in successful');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Check-in failed';
+      const message = formatError(err);
       setError(message);
       toast.error(message);
     } finally {
@@ -230,7 +232,7 @@ export default function DashboardPage() {
       } catch (err) {
         results[willId] = {
           status: 'error',
-          message: err instanceof Error ? err.message : 'Transaction failed',
+          message: formatError(err),
         };
       }
     }
@@ -244,18 +246,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabName: Tab) => {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      event.preventDefault();
-      const tabs: Tab[] = ['owned', 'inheriting', 'guardianship'];
-      const idx = tabs.indexOf(tabName);
-      const newIdx = event.key === 'ArrowLeft'
-        ? (idx - 1 + tabs.length) % tabs.length
-        : (idx + 1) % tabs.length;
-      setTab(tabs[newIdx]);
-      setIsMultiSelectMode(false);
-    }
-  };
+
 
   if (checkedWallet && !publicKey) {
     return (
@@ -278,6 +269,20 @@ export default function DashboardPage() {
 
   const isFiltering = search.trim() !== '' || statusFilter !== 'all';
 
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabName: Tab) => {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      // Simple toggle navigation for keyboard accessibility
+      const newTab =
+        tabName === 'owned'
+          ? 'inheriting'
+          : tabName === 'inheriting'
+            ? 'guardianship'
+            : 'owned';
+      setTab(newTab);
+      setIsMultiSelectMode(false);
+    }
+  };
   return (
     <div className="space-y-6">
       {/* Top Guardian Alert */}
@@ -566,6 +571,8 @@ export default function DashboardPage() {
                     will={will}
                     onCheckIn={tab === 'owned' ? handleCheckIn : undefined}
                     checkingIn={checkingInId === will.id}
+                    connectedAddress={publicKey}
+                    showEntitledShare={tab === 'inheriting'}
                   />
                 </div>
               </div>
