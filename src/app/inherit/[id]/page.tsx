@@ -130,10 +130,7 @@ export default function InheritPage() {
         )
     : undefined;
 
-  const grace =
-    will.status === WillStatus.Triggered && will.triggerTime
-      ? new Date(will.triggerTime.getTime() + will.gracePeriodDays * 86_400 * 1000)
-      : null;
+  const grace = graceDeadline(will);
   const canClaim = will.status === WillStatus.Triggered && grace !== null && Date.now() >= grace.getTime();
 
   return (
