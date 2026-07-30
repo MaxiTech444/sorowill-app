@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 import Image from 'next/image';
 import { WalletConnect } from '@/components/WalletConnect';
@@ -11,6 +12,11 @@ import { ToastProvider } from '@/components/Toast';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+
+  const isDashboardActive = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+  const isCreateWillActive = pathname === '/will/new' || pathname.startsWith('/will/new/');
+
   return (
     <ThemeProvider>
       <ToastProvider>
@@ -22,7 +28,15 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
             Soro<span className="text-will-purple">Will</span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-will-light/70 sm:flex">
-            <Link href="/dashboard" className="hover:text-will-light">
+            <Link
+              href="/dashboard"
+              className={
+                isDashboardActive
+                  ? 'text-will-purple font-semibold'
+                  : 'hover:text-will-light transition-colors'
+              }
+              aria-current={isDashboardActive ? 'page' : undefined}
+            >
               Dashboard
             </Link>
             <nav className="hidden items-center gap-6 text-sm text-will-light/70 sm:flex">
