@@ -19,6 +19,11 @@ describe('Top Up Amount Format Validation', () => {
     expect(isTopUpAmountValid('-0.01')).toBe(false);
   });
 
+  it('rejects non-finite values like "Infinity" and "1e309"', () => {
+    expect(isTopUpAmountValid('Infinity')).toBe(false);
+    expect(isTopUpAmountValid('1e309')).toBe(false);
+  });
+
   it('accepts valid positive numbers', () => {
     expect(isTopUpAmountValid('1')).toBe(true);
     expect(isTopUpAmountValid('0.01')).toBe(true);

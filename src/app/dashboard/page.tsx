@@ -128,6 +128,12 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const handleRetry = useCallback(() => {
+    if (publicKey) {
+      void loadWills(publicKey);
+    }
+  }, [publicKey, loadWills]);
+
   const handleManualRefresh = useCallback(async () => {
     if (!publicKey) return;
     setIsRefreshing(true);
@@ -429,17 +435,15 @@ export default function DashboardPage() {
       </div>
 
       {error ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4" role="alert">
-          <p className="text-sm text-red-300/80">{error}</p>
-          {publicKey && (
-            <button
-              type="button"
-              onClick={() => void loadWills(publicKey)}
-              className="rounded-full border border-red-400/40 px-3 py-1.5 text-xs text-red-300 transition hover:border-red-400/70"
-            >
-              Try again
-            </button>
-          )}
+        <div className="text-sm text-red-400 flex items-center gap-3" role="alert">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="rounded-full border border-red-400/50 px-3 py-1 text-xs font-medium text-red-300 transition hover:bg-red-400/10"
+          >
+            Try again
+          </button>
         </div>
       ) : null}
 
