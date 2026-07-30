@@ -60,5 +60,19 @@ describe('GuardianPanel', () => {
     ];
     render(<GuardianPanel guardians={guardians} guardianVotes={0} />);
     expect(screen.getByText(/Any 2 of 3 guardians/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows a quorum-unreachable warning when guardian count is below threshold', () => {
+    const guardian = 'GA1234567890ABCDEF1234567890ABCDEF1234567890AB';
+    render(<GuardianPanel guardians={[guardian]} guardianVotes={0} />);
+
+    // Warning must be visible
+    const alert = screen.getByRole('alert');
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent(/quorum can never be reached/i);
+
+    // The misleading "Any X of N" copy must NOT appear
+    expect(screen.queryByText(/Any \d+ of \d+ guardians/)).not.toBeInTheDocument();
   });
 });
