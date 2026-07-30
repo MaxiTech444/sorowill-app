@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import type { Beneficiary } from '@sorowill/sdk';
 
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
+import { formatError } from '@/lib/errors';
 
 export interface BeneficiaryFormProps {
   value: Beneficiary[];
@@ -31,6 +32,11 @@ function equalSplit(count: number): number[] {
 function getBeneficiaryValidationMessage(beneficiaries: Beneficiary[]): string | null {
   if (beneficiaries.length === 0) {
     return 'Add at least one beneficiary';
+  }
+
+  const hasInvalidRange = beneficiaries.some((b) => b.percentage < 0 || b.percentage > 100);
+  if (hasInvalidRange) {
+    return 'Percentages must be between 0% and 100%';
   }
 
   const hasNonInteger = beneficiaries.some((b) => !Number.isInteger(b.percentage));
@@ -119,7 +125,7 @@ export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {
         (prev) =>
           new Map(prev).set(
             id,
-            error instanceof Error ? error.message : 'Failed to resolve address',
+            error instanceof Error ? formatError(error) : 'Failed to resolve address',
           ),
       );
       setResolvedAddresses((prev) => {
@@ -200,9 +206,16 @@ export function BeneficiaryForm({ value, onChange }: BeneficiaryFormProps) {
                     min={0}
                     max={100}
                     value={beneficiary.percentage}
-                    onChange={(event) =>
-                      updateRow(index, { percentage: Number(event.target.value) || 0 })
-                    }
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      if (raw === '') {
+                        updateRow(index, { percentage: 0 });
+                        return;
+                      }
+                      const val = Number(raw);
+                      const clamped = isNaN(val) ? 0 : Math.max(0, Math.min(100, Math.floor(val)));
+                      updateRow(index, { percentage: clamped });
+                    }}
                     className="w-20 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-right text-sm text-will-light focus:border-will-purple focus:outline-none"
                   />
                 </div>
