@@ -7,6 +7,7 @@ import { calculateShares, formatUSDC, WillStatus, type Will } from '@sorowill/sd
 
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
+import { formatError } from '@/lib/errors';
 import { useToast } from '@/components/Toast';
 import { StatusBanner } from '@/components/StatusBanner';
 
@@ -47,7 +48,7 @@ export default function InheritPage() {
       if (!isMounted.current) {
         return;
       }
-      setError(err instanceof Error ? err.message : 'Failed to load will');
+      setError(formatError(err));
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -56,7 +57,7 @@ export default function InheritPage() {
   }, [willId]);
 
   useEffect(() => {
-    safeGetPublicKey().then((key) => {
+    void safeGetPublicKey().then((key) => {
       if (isMounted.current) {
         setPublicKey(key);
       }
@@ -64,7 +65,7 @@ export default function InheritPage() {
   }, []);
 
   useEffect(() => {
-    refetch();
+    void refetch();
   }, [refetch]);
 
   // Quick client-side validation before hitting the RPC layer
@@ -88,7 +89,7 @@ export default function InheritPage() {
       await refetch();
       toast.success('Inheritance claimed successfully');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to claim inheritance';
+      const message = formatError(err);
       setError(message);
       toast.error(message);
     } finally {

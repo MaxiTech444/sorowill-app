@@ -7,6 +7,7 @@ import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '
 
 import { truncateAddress, safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
+import { formatError } from '@/lib/errors';
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
 import { getUserBalance } from '@/lib/balance';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
@@ -122,7 +123,7 @@ export default function NewWillPage() {
 
   // Fetch the connected wallet address once so we can reject it as a guardian.
   useEffect(() => {
-    safeGetPublicKey().then(setOwnerAddress);
+    void safeGetPublicKey().then(setOwnerAddress);
   }, []);
 
   useEffect(() => {
@@ -154,7 +155,7 @@ export default function NewWillPage() {
       }
     };
 
-    fetchBalance();
+    void fetchBalance();
   }, []);
 
   useEffect(() => {
@@ -171,7 +172,7 @@ export default function NewWillPage() {
           setCloneLoading(false);
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : 'Failed to load will to clone');
+          setError(formatError(err));
           setCloneLoading(false);
         });
     }
@@ -222,7 +223,6 @@ export default function NewWillPage() {
     }
   }
 
-  const amountValid = amount.trim() !== '' && Number(amount) > 0 && token.trim() !== '';
   const beneficiariesValid = validateBeneficiaries(beneficiaries) && beneficiaries.every((b) => b.address.trim() !== '');
 
   const { rowErrors: guardianRowErrors, topError: guardianTopError } = validateGuardians(guardians, ownerAddress);
@@ -286,7 +286,7 @@ export default function NewWillPage() {
         (prev) =>
           new Map(prev).set(
             id,
-            err instanceof Error ? err.message : 'Failed to resolve address',
+            formatError(err),
           ),
       );
       setResolvedGuardians((prev) => {
@@ -327,7 +327,7 @@ export default function NewWillPage() {
       }
       router.push(`/will/${willId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create will');
+      setError(formatError(err));
       setSubmitting(false);
     }
   }

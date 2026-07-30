@@ -103,6 +103,7 @@ describe('useKeyboardShortcuts', () => {
 
     const div = document.createElement('div');
     div.contentEditable = 'true';
+    div.tabIndex = 0;
     document.body.appendChild(div);
     div.focus();
 
