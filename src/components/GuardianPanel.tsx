@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { truncateAddress } from '@/lib/freighter';
 import { GUARDIAN_THRESHOLD } from '@/lib/constants';
+import { CopyAddress } from './CopyAddress';
 
 export interface GuardianPanelProps {
   guardians: string[];
   guardianVotes: number;
+  willId?: string;
+  isOwner?: boolean;
   isGuardian?: boolean;
   isActive?: boolean;
   isCastingVote?: boolean;
@@ -15,12 +17,16 @@ export interface GuardianPanelProps {
 export function GuardianPanel({
   guardians,
   guardianVotes,
+  willId,
+  isOwner = false,
   isGuardian = false,
   isActive = false,
   isCastingVote = false,
   onCastVote,
   error,
 }: GuardianPanelProps) {
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
   if (guardians.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-white/20 bg-white/5 p-4">
@@ -28,7 +34,7 @@ export function GuardianPanel({
           <span className="text-lg">👨‍⚖️</span>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-will-light">No guardians</h3>
-            <p className="mt-1 text-sm text-will-light/60">No guardians configured for this will. Guardians can force an early release if you're incapacitated.</p>
+            <p className="mt-1 text-sm text-will-light/60">No guardians configured for this will. Guardians can force an early release if you&apos;re incapacitated.</p>
           </div>
         </div>
       </div>
@@ -46,6 +52,8 @@ export function GuardianPanel({
       console.error('Failed to copy invite link', err);
     }
   };
+
+  const hasEnoughGuardians = guardians.length >= GUARDIAN_THRESHOLD;
 
   return (
     <section className="rounded-xl border border-white/10 bg-white/5 p-4" aria-labelledby="guardians-heading">
@@ -76,9 +84,19 @@ export function GuardianPanel({
         ))}
       </div>
       <ul className="mt-3 space-y-1.5" aria-label="Guardian addresses">
-        {guardians.map((guardian) => (
-          <li key={guardian} className="font-mono text-sm text-will-light/80">
-            {truncateAddress(guardian)}
+        {guardians.map((guardian, index) => (
+          <li key={guardian} className="flex items-center justify-between font-mono text-sm text-will-light/80">
+            <CopyAddress address={guardian} />
+            {isOwner && willId ? (
+              <button
+                type="button"
+                onClick={() => handleCopy(index)}
+                className="text-xs text-will-purple hover:underline"
+                aria-label={`Copy invite link for guardian ${index + 1}`}
+              >
+                {copiedIndex === index ? 'Copied!' : 'Copy invite link'}
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -94,9 +112,15 @@ export function GuardianPanel({
       ) : null}
       {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
       <p className="mt-2 text-xs text-will-light/50">
-        Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.
+        {hasEnoughGuardians ? (
+          <>Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.</>
+        ) : (
+          <>
+            <span className="font-medium text-amber-400">Guardian quorum can never be reached</span> with the current guardian count.{' '}
+            {guardians.length} guardian{guardians.length === 1 ? '' : 's'} configured; this will needs at least {GUARDIAN_THRESHOLD} guardians to enable early release.
+          </>
+        )}
       </p>
     </section>
   );
 }
-

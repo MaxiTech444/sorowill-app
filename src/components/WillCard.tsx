@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 
-import { formatUSDC, getTimeUntilCheckin, WillStatus, type Will } from '@sorowill/sdk';
+import { calculateShares, formatUSDC, getTimeUntilCheckin, WillStatus, type Will } from '@sorowill/sdk';
 
+import { formatCheckinLabel } from '@/lib/deadlines';
 import { StatusBanner } from './StatusBanner';
 
 export interface WillCardProps {
@@ -11,11 +12,50 @@ export interface WillCardProps {
   /** Shown only when the viewer owns this will and it is still active. */
   onCheckIn?: (willId: string) => void;
   checkingIn?: boolean;
+  /** Address of the connected user, to compute and show entitled share when relevant (e.g. Inheriting tab). */
+  connectedAddress?: string | null;
+  /** If true, surfaces the connected user's entitled share inline. */
+  showEntitledShare?: boolean;
 }
 
-export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps) {
+export function WillCard({
+  will,
+  onCheckIn,
+  checkingIn = false,
+  connectedAddress,
+  showEntitledShare = false,
+}: WillCardProps) {
   const secondsLeft = getTimeUntilCheckin(will);
-  const daysLeft = Math.ceil(secondsLeft / 86_400);
+  const overdue = secondsLeft <= 0;
+
+  const colorClass = overdue
+    ? 'text-red-400'
+    : secondsLeft < 3 * 86_400
+      ? 'text-amber-400'
+      : 'text-emerald-400';
+
+  // Compute grace period deadline countdown for Triggered status
+  const graceSecondsLeft = (() => {
+    if (will.status !== WillStatus.Triggered) return 0;
+    const graceEndMs = will.triggerTime
+      ? will.triggerTime.getTime() + (will.gracePeriodDays ?? 7) * 86_400 * 1000
+      : will.lastCheckin.getTime() + ((will.checkinPeriodDays ?? 90) + (will.gracePeriodDays ?? 7)) * 86_400 * 1000;
+    return Math.max(0, Math.ceil((graceEndMs - Date.now()) / 1000));
+  })();
+  const graceDaysLeft = Math.ceil(graceSecondsLeft / 86_400);
+
+  // Compute entitled share if enabled and connected address matches a beneficiary
+  const userShare = (() => {
+    if (!showEntitledShare || !connectedAddress || !will.beneficiaries?.length) return null;
+    try {
+      const shares = calculateShares(will.balance, will.beneficiaries);
+      return shares.find(
+        (s) => s.address.toLowerCase() === connectedAddress.toLowerCase(),
+      );
+    } catch {
+      return null;
+    }
+  })();
 
   return (
     <article
@@ -29,10 +69,36 @@ export function WillCard({ will, onCheckIn, checkingIn = false }: WillCardProps)
           </Link>
           <StatusBanner status={will.status} compact />
         </div>
-        <p className="text-sm text-will-light/70">{formatUSDC(BigInt(will.balance))} USDC locked</p>
+
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-will-light/70">
+          <span>{formatUSDC(BigInt(will.balance))} USDC locked</span>
+          {userShare ? (
+            <>
+              <span className="text-will-light/40">•</span>
+              <span className="font-medium text-indigo-300">
+                Your share: {formatUSDC(BigInt(userShare.share))} USDC
+              </span>
+            </>
+          ) : null}
+        </div>
+
         {will.status === WillStatus.Active ? (
+          <p className={`text-xs ${colorClass}`} role="status">
+            {formatCheckinLabel(secondsLeft)}
+          </p>
+        ) : will.status === WillStatus.Triggered ? (
+          <p className="text-xs text-amber-400" role="status">
+            {graceDaysLeft <= 0
+              ? 'Grace period expired'
+              : `Grace period ends in ${graceDaysLeft} day${graceDaysLeft === 1 ? '' : 's'}`}
+          </p>
+        ) : will.status === WillStatus.Released ? (
+          <p className="text-xs text-indigo-300" role="status">
+            Inheritance released to beneficiaries
+          </p>
+        ) : will.status === WillStatus.Cancelled ? (
           <p className="text-xs text-will-light/50" role="status">
-            {secondsLeft > 0 ? `Check-in due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}` : 'Check-in overdue'}
+            Will cancelled by owner
           </p>
         ) : null}
       </div>

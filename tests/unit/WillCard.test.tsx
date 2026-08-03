@@ -11,7 +11,7 @@ vi.mock('next/link', () => ({
 
 vi.mock('@sorowill/sdk', () => ({
   WillStatus: { Active: 'Active', Triggered: 'Triggered', Released: 'Released', Cancelled: 'Cancelled' },
-  formatUSDC: (amount: bigint) => (Number(amount) / 1_000_000).toFixed(2),
+  formatUSDC: (amount: bigint | string) => (Number(amount) / 1_000_000).toFixed(2),
   getTimeUntilCheckin: () => 86_400 * 5,
 }));
 
@@ -23,16 +23,17 @@ vi.mock('@/components/StatusBanner', () => ({
   ),
 }));
 
-function makeWill(overrides: Partial<Will> = {}): Will {
+function makeWill(overrides: Record<string, unknown> = {}): Will {
   return {
     id: '1',
     owner: 'GABC...XYZ',
     status: WillStatus.Active,
-    balance: 1000000000n,
+    balance: '1000000000',
     token: 'CUSDC...',
     checkinPeriodDays: 90,
-    lastCheckin: Date.now() / 1000 - 86_400 * 30,
+    lastCheckin: new Date(Date.now() - 86_400_000 * 30),
     gracePeriodDays: 7,
+    triggerTime: null,
     beneficiaries: [],
     guardians: [],
     guardianVotes: 0,
@@ -42,41 +43,44 @@ function makeWill(overrides: Partial<Will> = {}): Will {
 
 describe('WillCard', () => {
   it('renders will ID and balance', () => {
-    render(<WillCard will={makeWill({ id: '42', balance: 500000000n })} />);
+    render(<WillCard will={makeWill({ id: '42', balance: '500000000' })} />);
     expect(screen.getByText('Will #42')).toBeInTheDocument();
     expect(screen.getByText('500.00 USDC locked')).toBeInTheDocument();
   });
 
   it('shows check-in button when onCheckIn is provided and will is active', () => {
     render(<WillCard will={makeWill()} onCheckIn={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Check In' })).toBeInTheDocument();
+    // The button uses aria-label="Check in for will {id}"
+    expect(screen.getByRole('button', { name: /check in for will/i })).toBeInTheDocument();
   });
 
   it('hides check-in button when onCheckIn is not provided', () => {
     render(<WillCard will={makeWill()} />);
-    expect(screen.queryByRole('button', { name: 'Check In' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /check in for will/i })).not.toBeInTheDocument();
   });
 
   it('hides check-in button when will is not active', () => {
     render(<WillCard will={makeWill({ status: WillStatus.Released })} onCheckIn={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: 'Check In' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /check in for will/i })).not.toBeInTheDocument();
   });
 
   it('calls onCheckIn with will id when clicked', () => {
     const onCheckIn = vi.fn();
     render(<WillCard will={makeWill({ id: '7' })} onCheckIn={onCheckIn} />);
-    screen.getByRole('button', { name: 'Check In' }).click();
+    screen.getByRole('button', { name: /check in for will 7/i }).click();
     expect(onCheckIn).toHaveBeenCalledWith('7');
   });
 
   it('shows checking in state when checkingIn is true', () => {
     render(<WillCard will={makeWill()} onCheckIn={vi.fn()} checkingIn />);
-    expect(screen.getByRole('button', { name: /checking in/i })).toBeDisabled();
+    // When checking in, the button is disabled
+    expect(screen.getByRole('button', { name: /check in for will/i })).toBeDisabled();
   });
 
   it('always shows details link', () => {
     render(<WillCard will={makeWill({ id: '5' })} />);
-    expect(screen.getByRole('link', { name: 'Details' })).toHaveAttribute('href', '/will/5');
+    // The link uses aria-label="View details for will {id}"
+    expect(screen.getByRole('link', { name: /view details for will 5/i })).toHaveAttribute('href', '/will/5');
   });
 
   it('shows overdue text when check-in is overdue', () => {
