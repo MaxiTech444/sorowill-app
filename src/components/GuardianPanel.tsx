@@ -1,7 +1,6 @@
 import { useState } from 'react';
+import { GUARDIAN_THRESHOLD } from '@/lib/constants';
 import { CopyAddress } from './CopyAddress';
-
-const GUARDIAN_THRESHOLD = 2;
 
 export interface GuardianPanelProps {
   guardians: string[];

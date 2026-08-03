@@ -7,6 +7,7 @@ import { formatUSDC, toStroops, validateBeneficiaries, type Beneficiary } from '
 
 import { truncateAddress, safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient } from '@/lib/sorowill';
+import { GUARDIAN_THRESHOLD, MAX_GUARDIANS } from '@/lib/constants';
 import { formatError } from '@/lib/errors';
 import { isFederatedAddress, resolveFederatedAddress } from '@/lib/federated';
 import { getUserBalance } from '@/lib/balance';
@@ -290,7 +291,7 @@ export default function NewWillPage() {
   }
 
   function addGuardian() {
-    if (guardians.length < 3) {
+    if (guardians.length < MAX_GUARDIANS) {
       setGuardians((prev) => [...prev, '']);
     }
   }
@@ -545,19 +546,19 @@ export default function NewWillPage() {
         {step === 3 ? (
           <fieldset className="space-y-3">
             <div className="flex items-center justify-between">
-              <legend className="text-sm font-medium text-will-light">Guardians (optional, up to 3)</legend>
+              <legend className="text-sm font-medium text-will-light">Guardians (optional, up to {MAX_GUARDIANS})</legend>
               <button
                 type="button"
                 onClick={addGuardian}
-                disabled={guardians.length >= 3}
-                aria-label={`Add guardian (${guardians.length} of 3)`}
+                disabled={guardians.length >= MAX_GUARDIANS}
+                aria-label={`Add guardian (${guardians.length} of ${MAX_GUARDIANS})`}
                 className="text-xs font-medium text-will-purple hover:underline disabled:opacity-40"
               >
                 + Add guardian
               </button>
             </div>
             <p className="text-xs text-will-light/50">
-              Any 2 of your guardians can force an early release if you&apos;re incapacitated.
+              Any {GUARDIAN_THRESHOLD} of your guardians can force an early release if you&apos;re incapacitated.
             </p>
 
             {guardians.map((guardian, index) => {
@@ -704,7 +705,7 @@ export default function NewWillPage() {
                       ))}
                   </dd>
                   <p className="mt-2 text-xs text-will-light/50">
-                    Any 2 of your guardians can force an early release if you&apos;re incapacitated.
+                    Any {GUARDIAN_THRESHOLD} of your guardians can force an early release if you&apos;re incapacitated.
                   </p>
                   {guardianBeneficiaryOverlap.length > 0 ? (
                     <p className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-xs text-amber-400" role="status">
