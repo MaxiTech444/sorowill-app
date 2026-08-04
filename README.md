@@ -25,11 +25,17 @@ SoroWill is a trustless, on-chain inheritance protocol on Stellar Soroban. This 
 - **Tailwind CSS 3**
 - **[@sorowill/sdk](../sorowill-sdk)** for all contract interaction and Freighter wallet handling
 
+> **Wallet support:** This app currently only supports the **[Freighter](https://freighter.app/)** browser extension. Other Stellar wallets (Albedo, xBull, Rabet, …) are not yet supported — you will not be able to connect them. Multi-wallet support is tracked in the SDK's wallet-adapter work; see the [`@sorowill/sdk`](https://www.npmjs.com/package/@sorowill/sdk) package for progress.
+
 ## Local Setup
 
 ```bash
 git clone https://github.com/SoroWill/sorowill-app.git
 cd sorowill-app
+# The .nvmrc file pins Node 20 (matching CI). If you use nvm/fnm/volta, run:
+#   nvm use       (nvm)
+#   fnm use        (fnm)
+#   volta install  (volta)
 npm install
 cp .env.example .env.local
 # fill in NEXT_PUBLIC_CONTRACT_ID with your deployed SoroWill contract address
@@ -45,6 +51,9 @@ npm run dev
 | `NEXT_PUBLIC_STELLAR_NETWORK` | Stellar network to connect to: `testnet` or `mainnet` |
 | `NEXT_PUBLIC_CONTRACT_ID` | Address of the deployed SoroWill contract |
 | `NEXT_PUBLIC_RPC_URL` | Soroban RPC endpoint (defaults to the public testnet RPC) |
+| `RESEND_API_KEY` | API key for reminder emails (optional; leave unset to skip sending) |
+| `RESEND_FROM_EMAIL` | Verified Resend sender address used for reminder emails |
+| `REMINDER_STORE_FILE` | Optional path for the local JSON reminder store used by the cron route |
 
 ## Pages
 
@@ -56,6 +65,16 @@ npm run dev
 | `/will/[id]` | Full will detail: check in, top up, update beneficiaries, cancel, trigger, release |
 | `/inherit/[id]` | Beneficiary view — see your entitled share and claim once ready |
 | `/verify/[id]` | Public, wallet-free verification of a will's on-chain state |
+
+## Reminder delivery
+
+Reminders are delivered by a server-side route that can be triggered on a schedule. The app ships a lightweight JSON store for subscriptions and dispatch history, so a daily cron job or Vercel Cron can call the dispatch endpoint without exposing any secrets:
+
+```bash
+curl -X POST https://your-app.example.com/api/reminders/dispatch
+```
+
+The dispatch route computes reminder windows from each will's `lastCheckin` and `checkinPeriodDays`, sending a well-before reminder once and an imminent reminder once for each active will that still has time left. The route is protected by a `CRON_SECRET` bearer token when configured, and Vercel cron plus GitHub Actions can both invoke it.
 
 ## Contributing via Drips Wave
 

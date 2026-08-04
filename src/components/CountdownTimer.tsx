@@ -8,39 +8,79 @@ export interface CountdownTimerProps {
   label?: string;
 }
 
-function splitDuration(totalSeconds: number) {
-  const clamped = Math.max(totalSeconds, 0);
-  const days = Math.floor(clamped / 86_400);
-  const hours = Math.floor((clamped % 86_400) / 3_600);
-  const minutes = Math.floor((clamped % 3_600) / 60);
-  const seconds = Math.floor(clamped % 60);
-  return { days, hours, minutes, seconds };
-}
-
-function pad(value: number): string {
-  return value.toString().padStart(2, '0');
-}
-
 export function CountdownTimer({ deadline, label }: CountdownTimerProps) {
-  const [secondsLeft, setSecondsLeft] = useState(() =>
-    Math.floor((deadline.getTime() - Date.now()) / 1000),
-  );
+  const computeSeconds = () => Math.floor((deadline.getTime() - Date.now()) / 1000);
+  const [secondsLeft, setSecondsLeft] = useState(() => computeSeconds());
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSecondsLeft(Math.floor((deadline.getTime() - Date.now()) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const tick = () => {
+      setSecondsLeft(computeSeconds());
+    };
+
+    const start = () => {
+      if (!interval) {
+        tick();
+        interval = setInterval(tick, 1000);
+      }
+    };
+
+    const stop = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      if (document.hidden) {
+        stop();
+      } else {
+        start();
+      }
+
+      const handleVisibilityChange = () => {
+        if (document.hidden) {
+          stop();
+        } else {
+          start();
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      return () => {
+        stop();
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+
+    interval = setInterval(tick, 1000);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [deadline]);
 
   const overdue = secondsLeft <= 0;
-  const { days, hours, minutes, seconds } = splitDuration(secondsLeft);
+  const { days, hours, minutes, seconds } = (() => {
+    const clamped = Math.max(secondsLeft, 0);
+    const d = Math.floor(clamped / 86_400);
+    const h = Math.floor((clamped % 86_400) / 3_600);
+    const m = Math.floor((clamped % 3_600) / 60);
+    const s = Math.floor(clamped % 60);
+    return { days: d, hours: h, minutes: m, seconds: s };
+  })();
 
   const colorClass = overdue
     ? 'text-red-400'
     : secondsLeft < 3 * 86_400
       ? 'text-amber-400'
       : 'text-emerald-400';
+
+  const pad = (value: number) => value.toString().padStart(2, '0');
 
   return (
     <div className="flex flex-col gap-1">
