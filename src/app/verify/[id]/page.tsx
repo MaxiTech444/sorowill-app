@@ -18,12 +18,13 @@ import { StatusBanner } from '@/components/StatusBanner';
 import { ShareVerification } from '@/components/ShareVerification';
 import { CopyAddress } from '@/components/CopyAddress';
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   let title = 'Verify Will';
   let description = 'A public, read-only view of this will\'s on-chain state.';
+  const { id } = await params;
 
   try {
-    const will = await getSoroWillClient().getWill(params.id);
+    const will = await getSoroWillClient().getWill(id);
     title = `Verify Will #${will.id}`;
     description = `Status: ${will.status}. Locked balance: ${(Number(will.balance) / 1_000_000).toFixed(2)} USDC. ${will.beneficiaries.length} beneficiaries.`;
   } catch {
@@ -56,10 +57,11 @@ function isWillNotFoundError(error: unknown): boolean {
   );
 }
 
-export default async function VerifyPage({ params }: { params: { id: string } }) {
+export default async function VerifyPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let will;
   try {
-    will = await getSoroWillClient().getWill(params.id);
+    will = await getSoroWillClient().getWill(id);
   } catch (error) {
     if (isWillNotFoundError(error)) {
       notFound();
