@@ -13,11 +13,6 @@ import {
   type Will,
 } from '@sorowill/sdk';
 
-export function isTopUpAmountValid(topUpAmount: string): boolean {
-  const num = Number(topUpAmount);
-  return topUpAmount.trim() !== '' && isFinite(num) && num > 0;
-}
-
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { formatError } from '@/lib/errors';
@@ -258,7 +253,7 @@ export default function WillDetailPage() {
   }
 
   // Quick client-side validation before hitting the RPC layer
-  if (!willId || /^\d+$/.test(willId) === false) {
+  if (!willId || !isValidWillId(willId)) {
     return (
       <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-8 text-center">
         <h1 className="text-lg font-semibold text-red-300">Invalid will ID</h1>

@@ -30,7 +30,6 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'SoroWill',
     description: 'Trustless on-chain inheritance on Stellar',
-    siteName: 'SoroWill',
     images: [
       {
         url: '/logo.svg',

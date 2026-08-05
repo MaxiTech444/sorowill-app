@@ -49,7 +49,6 @@ const KNOWN_ERROR_PATTERNS: ReadonlyArray<{
 
 export function formatError(error: unknown): string {
   if (error instanceof Error) {
-    const message = error.message.toLowerCase();
     for (const pattern of KNOWN_ERROR_PATTERNS) {
       if (pattern.test(error.message)) {
         return pattern.friendly;

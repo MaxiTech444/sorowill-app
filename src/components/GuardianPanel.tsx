@@ -111,7 +111,7 @@ export function GuardianPanel({
         </button>
       ) : null}
       {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
-      <p className="mt-2 text-xs text-will-light/50">
+      <p className="mt-2 text-xs text-will-light/50" role={hasEnoughGuardians ? undefined : 'alert'}>
         {hasEnoughGuardians ? (
           <>Any {GUARDIAN_THRESHOLD} of {guardians.length} guardians can force an early release.</>
         ) : (

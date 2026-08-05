@@ -42,5 +42,5 @@ export function isValidAmount(amount: string): boolean {
  */
 export function isTopUpAmountValid(amount: string): boolean {
   const trimmed = amount.trim();
-  return trimmed !== '' && !isNaN(Number(trimmed)) && Number(trimmed) > 0;
+  return trimmed !== '' && Number.isFinite(Number(trimmed)) && Number(trimmed) > 0;
 }

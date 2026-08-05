@@ -16,7 +16,7 @@ vi.mock('@/app/inherit/[id]/InheritPageClient', () => ({
 
     function InheritPageClientInner() {
       const [will, setWill] = useState(null as any);
-      const [publicKey, setPublicKey] = useState<string | null>(null);
+      const [publicKey, setPublicKey]: [string | null, (v: string | null) => void] = useState(null);
       const connected = publicKey || 'GDUPLICATE1234567890ABCDEF';
 
       useEffect(() => {

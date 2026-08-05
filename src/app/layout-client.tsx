@@ -5,9 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import Image from 'next/image';
-import { WalletConnect } from '@/components/WalletConnect';
 import { NetworkMismatchBanner } from '@/components/NetworkMismatchBanner';
-import { NetworkSwitcher } from '@/components/NetworkSwitcher';
 import { ToastProvider } from '@/components/Toast';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { HeaderContextArea } from '@/components/HeaderContextArea';

@@ -145,7 +145,7 @@ export default function NewWillPage() {
 
   const tokenValid = CONTRACT_ADDRESS_PATTERN.test(token.trim());
   const showTokenError = token.trim() !== '' && !tokenValid;
-  const isAmountValid = amount.trim() !== '' && Number(amount) > 0 && tokenValid;
+  const isAmountValid = isValidAmount(amount) && tokenValid;
   useEffect(() => {
     const state: FormState = {
       step,

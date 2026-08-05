@@ -8,7 +8,7 @@ describe('Wallet Auto-Reconnect Audit (Issue #24)', () => {
     it('should provide a shared hook for wallet auto-reconnect', () => {
       sessionStorage.setItem('walletPublicKey', 'GCQRQHBG64RXZXPD73KPD4RNPQDWSW6QBIVVPICMZ2ZQ7CWSQKQ5CLKM')
 
-      const { publicKey, isConnected } = useWalletAutoReconnect('dashboard')
+      const { publicKey, isConnected } = useWalletAutoReconnect()
 
       expect(isConnected).toBe(true)
       expect(publicKey).toBe('GCQRQHBG64RXZXPD73KPD4RNPQDWSW6QBIVVPICMZ2ZQ7CWSQKQ5CLKM')
@@ -19,7 +19,7 @@ describe('Wallet Auto-Reconnect Audit (Issue #24)', () => {
     it('should return null if no wallet is connected', () => {
       sessionStorage.removeItem('walletPublicKey')
 
-      const { publicKey, isConnected } = useWalletAutoReconnect('dashboard')
+      const { publicKey, isConnected } = useWalletAutoReconnect()
 
       expect(isConnected).toBe(false)
       expect(publicKey).toBeNull()
