@@ -78,6 +78,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [guardianScanWarning, setGuardianScanWarning] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -114,7 +115,8 @@ export default function DashboardPage() {
       }
       setOwnedWills(owned);
       setInheritingWills(inheriting);
-      setGuardianWills(guardian);
+      setGuardianWills(guardian.wills);
+      setGuardianScanWarning(guardian.hasErrors);
       setLastFetchTime(new Date());
     } catch (err) {
       if (!isMounted.current) {
@@ -146,7 +148,8 @@ export default function DashboardPage() {
       ]);
       setOwnedWills(owned);
       setInheritingWills(inheriting);
-      setGuardianWills(guardian);
+      setGuardianWills(guardian.wills);
+      setGuardianScanWarning(guardian.hasErrors);
       setLastFetchTime(new Date());
       setError(null);
       toast.success('Data refreshed');
@@ -307,6 +310,13 @@ export default function DashboardPage() {
           >
             View Role
           </button>
+        </div>
+      )}
+
+      {guardianScanWarning && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-300 text-sm">
+          ⚠️ Some guardianship data could not be loaded due to a network error. Your guardian list above may be
+          incomplete — try refreshing.
         </div>
       )}
 
