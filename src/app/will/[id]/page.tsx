@@ -45,10 +45,6 @@ function getGuardianVoteErrorMessage(err: unknown): string {
   const message = formatError(err);
   const normalized = message.toLowerCase();
 
-  if (normalized.includes('already voted')) {
-    return 'This guardian has already cast a vote for this will.';
-  }
-
   if (normalized.includes('not a guardian') || normalized.includes('not guardian')) {
     return 'Only listed guardians can cast a vote for this will.';
   }
