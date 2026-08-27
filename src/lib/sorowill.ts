@@ -109,6 +109,48 @@ export function stellarExpertUrl(kind: 'contract' | 'account' | 'tx', id: string
   return `https://stellar.expert/explorer/${network}/${kind}/${id}`;
 }
 
+// === Will enumeration ===
+
+/**
+ * Enumerates every will on the contract by walking sequential will IDs.
+ *
+ * Will IDs are contract-side `u64` values assigned consecutively from 1, and
+ * wills are never deleted (cancelled/released wills still resolve via
+ * `getWill`), so IDs `1..N` are contiguous. We fetch in fixed-size batches and
+ * stop as soon as a full batch resolves to zero wills, which means the highest
+ * allocated ID has been passed. Unlike a hardcoded upper bound, this scales
+ * with the number of wills that actually exist.
+ *
+ * The SDK exposes no count or list-all method; this is the only way to derive
+ * protocol-wide totals client-side.
+ */
+export async function enumerateAllWills(batchSize = 25): Promise<Will[]> {
+  const client = getSoroWillClient();
+  const wills: Will[] = [];
+  // Runaway guard only: not an enumeration cap. Far above any realistic will
+  // count, it exists solely to bound the loop if the RPC misbehaves.
+  const maxIdsToScan = 100_000;
+
+  for (let start = 1; start <= maxIdsToScan; start += batchSize) {
+    const batch = await Promise.all(
+      Array.from({ length: batchSize }, (_, offset) =>
+        client
+          .getWill((start + offset).toString())
+          .then((will): Will | null => will ?? null)
+          .catch(() => null),
+      ),
+    );
+
+    const found = batch.filter((will): will is Will => will !== null);
+    if (found.length === 0) {
+      break;
+    }
+    wills.push(...found);
+  }
+
+  return wills;
+}
+
 /** Fetches wills by guardian by scanning sequential will IDs. */
 export async function getWillsByGuardian(guardianAddress: string): Promise<Will[]> {
   const client = getSoroWillClient();
