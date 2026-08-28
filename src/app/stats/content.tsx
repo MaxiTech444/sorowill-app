@@ -24,24 +24,8 @@ export function StatsContent() {
 
         const client = getSoroWillClient();
 
-        // Attempt to fetch protocol stats
-        // Note: This depends on the contract exposing get_protocol_stats method
-        try {
-          const protocolStats = await (client as any).getProtocolStats?.();
-          if (protocolStats) {
-            setStats({
-              totalWills: Number(protocolStats.totalWills || 0),
-              totalValueLocked: String(protocolStats.totalValueLocked || '0'),
-              activeWills: Number(protocolStats.activeWills || 0),
-              completedInheritances: Number(protocolStats.completedInheritances || 0),
-            });
-            return;
-          }
-        } catch {
-          // Method not available, use fallback
-        }
-
-        // Fallback: fetch wills sequentially to calculate stats
+        // Fetch wills sequentially to calculate stats. The SDK does not expose
+        // a protocol-stats endpoint, so derive these metrics from individual wills.
         const wills: { id: string; executionStarted?: boolean; amount?: string | bigint }[] = [];
         const promises = [];
         for (let i = 1; i <= 100; i++) {
