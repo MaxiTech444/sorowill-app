@@ -16,6 +16,7 @@ import {
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { formatError } from '@/lib/errors';
+import { nextCheckinDeadline, graceDeadline } from '@/lib/deadlines';
 import { useToast } from '@/components/Toast';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
@@ -30,38 +31,9 @@ interface ActivityEntry {
   at: Date;
 }
 
-function nextCheckinDeadline(will: Will): Date {
-  return new Date(will.lastCheckin.getTime() + will.checkinPeriodDays * 86_400 * 1000);
-}
-
-function graceDeadline(will: Will): Date | null {
-  if (!will.triggerTime) {
-    return null;
-  }
-  return new Date(will.triggerTime.getTime() + will.gracePeriodDays * 86_400 * 1000);
-}
-
-function guardianVoteKey(willId: string, guardian: string): string {
-  return `sorowill:guardian-voted:${willId}:${guardian}`;
-}
-
-function hasGuardianVoted(willId: string, guardian: string): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.localStorage.getItem(guardianVoteKey(willId, guardian)) === 'true';
-}
-
-function markGuardianVoted(willId: string, guardian: string): void {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(guardianVoteKey(willId, guardian), 'true');
-}
-
 function getGuardianVoteErrorMessage(err: unknown): string {
   const message = formatError(err);
   const normalized = message.toLowerCase();
-
-  if (normalized.includes('already voted')) {
-    return 'This guardian has already cast a vote for this will.';
-  }
 
   if (normalized.includes('not a guardian') || normalized.includes('not guardian')) {
     return 'Only listed guardians can cast a vote for this will.';
