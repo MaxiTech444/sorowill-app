@@ -21,6 +21,7 @@ import { useToast } from '@/components/Toast';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
 import { GuardianPanel } from '@/components/GuardianPanel';
+import { DestructiveActionConfirmation } from '@/components/DestructiveActionConfirmation';
 import { StatusBanner } from '@/components/StatusBanner';
 import { CopyAddress } from '@/components/CopyAddress';
 import { isTopUpAmountValid } from '@/lib/amount';
@@ -81,6 +82,7 @@ export default function WillDetailPage() {
   const [showTopUp, setShowTopUp] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('');
   const [showEditBeneficiaries, setShowEditBeneficiaries] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [draftBeneficiaries, setDraftBeneficiaries] = useState<Beneficiary[]>([]);
   const showEditBeneficiariesRef = useRef(false);
   useEffect(() => {
@@ -467,7 +469,7 @@ export default function WillDetailPage() {
             </button>
             <button
               type="button"
-              onClick={() => runAction('cancel_will', () => client.cancelWill(will.id))}
+              onClick={() => setShowCancelConfirm(true)}
               disabled={busyAction !== null}
               className="w-full rounded-full border border-red-400/40 px-4 py-2 text-sm text-red-300 transition hover:border-red-400/70 disabled:opacity-60 sm:w-auto"
             >
@@ -624,6 +626,18 @@ export default function WillDetailPage() {
           </button>
         </div>
       ) : null}
+
+      <DestructiveActionConfirmation
+        isOpen={showCancelConfirm}
+        action="cancel_will"
+        willId={will.id}
+        confirmationType="willId"
+        onCancel={() => setShowCancelConfirm(false)}
+        onConfirm={() => {
+          setShowCancelConfirm(false);
+          void runAction('cancel_will', () => client.cancelWill(will.id));
+        }}
+      />
 
       <div className="print-section rounded-xl border border-white/10 bg-white/5 p-4">
         <h2 className="text-sm font-semibold text-will-light print-heading">Beneficiaries</h2>
