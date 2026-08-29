@@ -120,8 +120,13 @@ export function StatsContent() {
     },
     {
       label: 'Total Value Locked',
+      // Issue #207: dividing by 1_000_000 converts USDC base units to whole
+      // USDC (1 USDC = 10^6 base units) — it is NOT a millions-scale
+      // reduction. BigInt division also truncates, so the figure is rounded
+      // down to the nearest whole USDC. The copy below and the "About These
+      // Metrics" bullet now describe exactly that.
       value: `${(BigInt(stats.totalValueLocked) / BigInt(1000000)).toString()} USDC`,
-      description: 'Total USDC held in active wills (in millions)',
+      description: 'Total USDC held in active wills, rounded down to whole USDC',
       color: 'from-blue-400 to-cyan-500',
     },
     {
@@ -167,7 +172,8 @@ export function StatsContent() {
           <li className="flex gap-3">
             <span className="shrink-0 text-will-purple">→</span>
             <span>
-              <strong>Total Value Locked:</strong> Sum of all USDC held across all active wills. Displayed in millions for readability.
+              <strong>Total Value Locked:</strong> Sum of all USDC held across all active wills, converted from the
+              contract&apos;s base units (1 USDC = 1,000,000 base units) and rounded down to the nearest whole USDC.
             </span>
           </li>
           <li className="flex gap-3">

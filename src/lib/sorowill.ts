@@ -109,70 +109,64 @@ export function stellarExpertUrl(kind: 'contract' | 'account' | 'tx', id: string
   return `https://stellar.expert/explorer/${network}/${kind}/${id}`;
 }
 
-// === Will enumeration ===
-
-/**
- * Enumerates every will on the contract by walking sequential will IDs.
- *
- * Will IDs are contract-side `u64` values assigned consecutively from 1, and
- * wills are never deleted (cancelled/released wills still resolve via
- * `getWill`), so IDs `1..N` are contiguous. We fetch in fixed-size batches and
- * stop as soon as a full batch resolves to zero wills, which means the highest
- * allocated ID has been passed. Unlike a hardcoded upper bound, this scales
- * with the number of wills that actually exist.
- *
- * The SDK exposes no count or list-all method; this is the only way to derive
- * protocol-wide totals client-side.
- */
-export async function enumerateAllWills(batchSize = 25): Promise<Will[]> {
-  const client = getSoroWillClient();
-  const wills: Will[] = [];
-  // Runaway guard only: not an enumeration cap. Far above any realistic will
-  // count, it exists solely to bound the loop if the RPC misbehaves.
-  const maxIdsToScan = 100_000;
-
-  for (let start = 1; start <= maxIdsToScan; start += batchSize) {
-    const batch = await Promise.all(
-      Array.from({ length: batchSize }, (_, offset) =>
-        client
-          .getWill((start + offset).toString())
-          .then((will): Will | null => will ?? null)
-          .catch(() => null),
-      ),
-    );
-
-    const found = batch.filter((will): will is Will => will !== null);
-    if (found.length === 0) {
-      break;
-    }
-    wills.push(...found);
-  }
-
-  return wills;
+export interface GuardianWillsResult {
+  wills: Will[];
+  /** True if any scan errors occurred that were not simply "will not found" (e.g. RPC/network failures). */
+  hasErrors: boolean;
 }
 
-/** Fetches wills by guardian by scanning sequential will IDs. */
-export async function getWillsByGuardian(guardianAddress: string): Promise<Will[]> {
+const GUARDIAN_SCAN_BATCH_SIZE = 30;
+const GUARDIAN_SCAN_MAX_ID = 1000;
+
+/**
+ * Best-effort heuristic distinguishing "this will ID doesn't exist" (expected
+ * once we scan past the last assigned ID) from other failures such as a
+ * transient RPC/network error.
+ */
+function isWillNotFoundError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /not\s*found|missing|does not exist|no such/i.test(error.message);
+}
+
+/**
+ * Fetches wills by guardian by scanning will IDs in expanding batches,
+ * stopping once an entire batch turns up no wills. This avoids capping the
+ * scan at a fixed constant while still bounding the total work performed.
+ */
+export async function getWillsByGuardian(guardianAddress: string): Promise<GuardianWillsResult> {
   const client = getSoroWillClient();
   const wills: Will[] = [];
-  const promises = [];
-  // Scan sequentially up to 30 wills, which covers the test environment range.
-  for (let i = 1; i <= 30; i++) {
-    promises.push(
-      client
-        .getWill(i.toString())
-        .then((will) => {
-          if (will && will.guardians && will.guardians.includes(guardianAddress)) {
-            wills.push(will);
-          }
-        })
-        .catch(() => {
-          // Ignore errors (will does not exist or network error)
-        })
+  let hasErrors = false;
+
+  for (let batchStart = 1; batchStart <= GUARDIAN_SCAN_MAX_ID; batchStart += GUARDIAN_SCAN_BATCH_SIZE) {
+    const batchEnd = Math.min(batchStart + GUARDIAN_SCAN_BATCH_SIZE - 1, GUARDIAN_SCAN_MAX_ID);
+    let foundAnyInBatch = false;
+
+    const ids = Array.from({ length: batchEnd - batchStart + 1 }, (_, offset) => batchStart + offset);
+    await Promise.all(
+      ids.map((id) =>
+        client
+          .getWill(id.toString())
+          .then((will) => {
+            foundAnyInBatch = true;
+            if (will && will.guardians && will.guardians.includes(guardianAddress)) {
+              wills.push(will);
+            }
+          })
+          .catch((error) => {
+            if (!isWillNotFoundError(error)) {
+              hasErrors = true;
+            }
+          })
+      )
     );
+
+    if (!foundAnyInBatch) {
+      break;
+    }
   }
-  await Promise.all(promises);
-  return wills;
+
+  return { wills, hasErrors };
 }
 
 

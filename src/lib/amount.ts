@@ -37,12 +37,11 @@ export function isValidAmount(amount: string): boolean {
 }
 
 /**
- * Lightweight top-up amount validator used inline in the will detail UI.
- * Matches the historical behavior of the previously exported helper.
+ * Top-up amount validator used inline in the will detail UI. Delegates to
+ * isValidAmount so both validators reject scientific notation the same way.
  */
 export function isTopUpAmountValid(amount: string): boolean {
-  const trimmed = amount.trim();
-  return trimmed !== '' && Number.isFinite(Number(trimmed)) && Number(trimmed) > 0;
+  return isValidAmount(amount);
 }
 
 /**
