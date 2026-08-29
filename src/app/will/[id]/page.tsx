@@ -16,6 +16,7 @@ import {
 import { safeGetPublicKey, truncateAddress } from '@/lib/freighter';
 import { getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
 import { formatError } from '@/lib/errors';
+import { nextCheckinDeadline, graceDeadline } from '@/lib/deadlines';
 import { useToast } from '@/components/Toast';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
 import { CountdownTimer } from '@/components/CountdownTimer';
@@ -28,17 +29,6 @@ interface ActivityEntry {
   action: string;
   txHash: string;
   at: Date;
-}
-
-function nextCheckinDeadline(will: Will): Date {
-  return new Date(will.lastCheckin.getTime() + will.checkinPeriodDays * 86_400 * 1000);
-}
-
-function graceDeadline(will: Will): Date | null {
-  if (!will.triggerTime) {
-    return null;
-  }
-  return new Date(will.triggerTime.getTime() + will.gracePeriodDays * 86_400 * 1000);
 }
 
 function getGuardianVoteErrorMessage(err: unknown): string {
