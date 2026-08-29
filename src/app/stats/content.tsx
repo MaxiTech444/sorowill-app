@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getSoroWillClient } from '@/lib/sorowill';
+import { WillStatus } from '@sorowill/sdk';
+import { enumerateAllWills, getSoroWillClient } from '@/lib/sorowill';
 import { formatError } from '@/lib/errors';
 
 interface ProtocolStats {
@@ -41,33 +42,24 @@ export function StatsContent() {
           // Method not available, use fallback
         }
 
-        // Fallback: fetch wills sequentially to calculate stats
-        const wills: { id: string; executionStarted?: boolean; amount?: string | bigint }[] = [];
-        const promises = [];
-        for (let i = 1; i <= 100; i++) {
-          promises.push(
-            client
-              .getWill(i.toString())
-              .then((will) => {
-                if (will) {
-                  wills.push(will);
-                }
-              })
-              .catch(() => {
-                // Will does not exist or network error
-              })
-          );
-        }
-        await Promise.all(promises);
+        // Fallback: enumerate every will on the contract and derive the
+        // stats from real will state. enumerateAllWills() walks sequential
+        // IDs until the last one is passed, so it does not silently cap out.
+        const wills = await enumerateAllWills();
 
         const totalWills = wills.length;
-        const activeWills = wills.filter((w) => !w.executionStarted).length;
-        const completedInheritances = wills.filter((w) => w.executionStarted).length;
+        const activeWills = wills.filter((w) => w.status === WillStatus.Active).length;
+        const completedInheritances = wills.filter(
+          (w) => w.status === WillStatus.Released,
+        ).length;
 
-        // Sum value locked (if available in will object)
-        const totalValueLocked = wills.reduce((sum, w) => {
-          return sum + (BigInt(w.amount || 0));
-        }, BigInt(0)).toString();
+        // Total value locked: sum of balances still held by non-terminal wills.
+        const totalValueLocked = wills
+          .filter(
+            (w) => w.status === WillStatus.Active || w.status === WillStatus.Triggered,
+          )
+          .reduce((sum, w) => sum + BigInt(w.balance || 0), BigInt(0))
+          .toString();
 
         setStats({
           totalWills,

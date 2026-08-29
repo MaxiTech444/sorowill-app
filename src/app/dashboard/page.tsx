@@ -1,5 +1,4 @@
 'use client';
-// dummy comment for tests/unit/BundleSize.test.ts: next/dynamic dynamic()
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -9,6 +8,7 @@ import { WillStatus, type Will, formatUSDC, toStroops } from '@sorowill/sdk';
 
 import { safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient, getWillsByGuardian } from '@/lib/sorowill';
+import { getInvalidBatchAmounts, isValidAmount } from '@/lib/amount';
 import { formatError } from '@/lib/errors';
 import { exportWillsToCSV } from '@/lib/willExport';
 import { useToast } from '@/components/Toast';
@@ -253,7 +253,7 @@ export default function DashboardPage() {
 
     for (const willId of selectedWillIds) {
       const amount = batchAmounts[willId];
-      if (!amount || Number(amount) <= 0) {
+      if (!amount || !isValidAmount(amount)) {
         results[willId] = { status: 'error', message: 'Invalid or missing amount' };
         continue;
       }
@@ -301,6 +301,15 @@ export default function DashboardPage() {
 
   const isFiltering = search.trim() !== '' || statusFilter !== 'all';
 
+  // getWillsByGuardian returns every will the address is listed on, including
+  // Cancelled/Released ones. Only wills still in force (Active or in their
+  // grace period) represent a live guardian responsibility.
+  const activeGuardianWills = guardianWills.filter(
+    (will) => will.status === WillStatus.Active || will.status === WillStatus.Triggered,
+  );
+
+  const invalidBatchWillIds = getInvalidBatchAmounts(selectedWillIds, batchAmounts);
+
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tabName: Tab) => {
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
@@ -318,11 +327,11 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Top Guardian Alert */}
-      {guardianWills.length > 0 && (
+      {activeGuardianWills.length > 0 && (
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-300 text-sm flex justify-between items-center">
           <span>
             ℹ️ You are a designated guardian on{' '}
-            <strong className="underline">{guardianWills.length} active will(s)</strong>.
+            <strong className="underline">{activeGuardianWills.length} active will(s)</strong>.
           </span>
           <button
             onClick={() => {
@@ -575,10 +584,15 @@ export default function DashboardPage() {
                 .reduce((sum, val) => sum + (Number(val) || 0), 0)
                 .toFixed(2)}{' '}
               USDC
+              {invalidBatchWillIds.length > 0 && (
+                <span className="block text-xs font-normal text-red-400">
+                  Enter a valid amount for every selected will (no scientific notation).
+                </span>
+              )}
             </span>
             <button
               type="submit"
-              disabled={batchSubmitting}
+              disabled={batchSubmitting || invalidBatchWillIds.length > 0}
               className="rounded-full bg-will-purple px-5 py-2 text-sm font-semibold text-white transition hover:bg-will-purple/90 disabled:opacity-60"
             >
               {batchSubmitting ? 'Submitting Batch…' : 'Submit Batch Top-up'}

@@ -43,3 +43,20 @@ export function isValidAmount(amount: string): boolean {
 export function isTopUpAmountValid(amount: string): boolean {
   return isValidAmount(amount);
 }
+
+/**
+ * Returns the subset of `willIds` whose batch top-up amount is missing or
+ * invalid. An amount is invalid if it is absent, empty, non-positive, written
+ * in scientific notation (e.g. '1e5'), or otherwise not parseable by
+ * toStroops(). Used to gate the batch top-up submit button and to skip bad
+ * entries before calling the contract.
+ */
+export function getInvalidBatchAmounts(
+  willIds: string[],
+  amounts: Record<string, string>,
+): string[] {
+  return willIds.filter((willId) => {
+    const amount = amounts[willId];
+    return amount === undefined || !isValidAmount(amount);
+  });
+}
