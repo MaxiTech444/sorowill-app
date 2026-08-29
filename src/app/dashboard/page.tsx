@@ -9,6 +9,7 @@ import { WillStatus, type Will, formatUSDC, toStroops } from '@sorowill/sdk';
 import { safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient, getWillsByGuardian } from '@/lib/sorowill';
 import { formatError } from '@/lib/errors';
+import { exportWillsToCSV } from '@/lib/willExport';
 import { useToast } from '@/components/Toast';
 import { WillCard } from '@/components/WillCard';
 
@@ -161,6 +162,17 @@ export default function DashboardPage() {
       setIsRefreshing(false);
     }
   }, [publicKey, toast]);
+
+  const handleExportCSV = useCallback(() => {
+    const csv = exportWillsToCSV(ownedWills);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sorowill-wills-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [ownedWills]);
 
   useEffect(() => {
     void safeGetPublicKey().then((key) => {
@@ -340,6 +352,15 @@ export default function DashboardPage() {
               }`}
             >
               {isMultiSelectMode ? 'Cancel Multi-select' : 'Multi-select Mode'}
+            </button>
+          )}
+          {tab === 'owned' && ownedWills.length > 0 && (
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light"
+            >
+              Export CSV
             </button>
           )}
           <button
