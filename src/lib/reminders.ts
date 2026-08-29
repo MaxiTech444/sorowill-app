@@ -1,6 +1,3 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-
 import { WillStatus, type Will } from '@sorowill/sdk';
 
 import { getSoroWillClient } from '@/lib/sorowill';
@@ -39,10 +36,29 @@ export interface ReminderDispatchResult {
   errors: string[];
 }
 
-const DEFAULT_STORE_FILE = path.join(process.cwd(), '.reminder-store.json');
+// Reminder subscriptions/history are persisted to a Vercel KV / Upstash Redis
+// REST endpoint so they survive across serverless invocations (the local
+// filesystem is ephemeral per-invocation on Vercel and cannot be relied on).
+// See .env.example for KV_REST_API_URL / KV_REST_API_TOKEN.
+const KV_REST_API_URL = process.env.KV_REST_API_URL;
+const KV_REST_API_TOKEN = process.env.KV_REST_API_TOKEN;
+const KV_STORE_KEY = process.env.REMINDER_STORE_KV_KEY || 'sorowill:reminder-store';
 
-function getStoreFilePath(): string {
-  return process.env.REMINDER_STORE_FILE || DEFAULT_STORE_FILE;
+function assertKvConfigured(): void {
+  if (!KV_REST_API_URL || !KV_REST_API_TOKEN) {
+    throw new Error(
+      'Reminder storage is not configured. Set KV_REST_API_URL and KV_REST_API_TOKEN ' +
+        '(a Vercel KV / Upstash Redis REST endpoint) so reminder subscriptions persist ' +
+        'across serverless invocations. See .env.example.',
+    );
+  }
+}
+
+function getAppBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL;
+  if (configured) return configured.replace(/\/$/, '');
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'http://localhost:3000';
 }
 
 function normalizeEmail(email: string): string {
@@ -68,26 +84,38 @@ export function getReminderKind(daysRemaining: number): ReminderKind | null {
 }
 
 async function readStore(): Promise<ReminderStore> {
-  const storePath = getStoreFilePath();
-  try {
-    const raw = await fs.readFile(storePath, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<ReminderStore>;
-    return {
-      subscriptions: parsed.subscriptions ?? {},
-      history: parsed.history ?? {},
-    };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { subscriptions: {}, history: {} };
-    }
-    throw error;
+  assertKvConfigured();
+  const response = await fetch(`${KV_REST_API_URL}/get/${encodeURIComponent(KV_STORE_KEY)}`, {
+    headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to read reminder store: ${response.status}`);
   }
+  const payload = (await response.json()) as { result: string | null };
+  if (!payload.result) {
+    return { subscriptions: {}, history: {} };
+  }
+  const parsed = JSON.parse(payload.result) as Partial<ReminderStore>;
+  return {
+    subscriptions: parsed.subscriptions ?? {},
+    history: parsed.history ?? {},
+  };
 }
 
 async function writeStore(store: ReminderStore): Promise<void> {
-  const storePath = getStoreFilePath();
-  await fs.mkdir(path.dirname(storePath), { recursive: true });
-  await fs.writeFile(storePath, JSON.stringify(store, null, 2));
+  assertKvConfigured();
+  const response = await fetch(`${KV_REST_API_URL}/set/${encodeURIComponent(KV_STORE_KEY)}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${KV_REST_API_TOKEN}`,
+      'Content-Type': 'text/plain',
+    },
+    body: JSON.stringify(store),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to write reminder store: ${response.status}`);
+  }
 }
 
 function getHistoryKey(willId: string, email: string): string {
@@ -121,6 +149,27 @@ export async function registerReminderSubscription({
   await writeStore(store);
 
   return { ok: true, subscription };
+}
+
+export async function unsubscribeReminderSubscription({
+  willId,
+  email,
+}: {
+  willId: string;
+  email: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const normalizedEmail = normalizeEmail(email);
+  const key = `${willId}:${normalizedEmail}`;
+
+  const store = await readStore();
+  if (!store.subscriptions[key]) {
+    return { ok: false, error: 'No matching reminder subscription was found.' };
+  }
+
+  delete store.subscriptions[key];
+  await writeStore(store);
+
+  return { ok: true };
 }
 
 export async function dispatchReminderEmails(): Promise<ReminderDispatchResult> {
@@ -213,7 +262,8 @@ async function sendReminderEmail({ to, will, deadline, reminderKind }: ReminderE
       : 'Reminder: your SoroWill check-in is still due soon';
 
   const days = Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / 86_400_000));
-  const body = `Hello,\n\nThis is a reminder from SoroWill that your will #${will.id} needs a check-in soon. Your next deadline is ${deadline.toISOString()}. There are ${days} day(s) left before the check-in window closes.\n\nPlease visit the app and confirm you are still active to keep the will intact.\n\nSoroWill`;
+  const unsubscribeUrl = `${getAppBaseUrl()}/api/reminders/unsubscribe?willId=${encodeURIComponent(will.id)}&email=${encodeURIComponent(to)}`;
+  const body = `Hello,\n\nThis is a reminder from SoroWill that your will #${will.id} needs a check-in soon. Your next deadline is ${deadline.toISOString()}. There are ${days} day(s) left before the check-in window closes.\n\nPlease visit the app and confirm you are still active to keep the will intact.\n\nTo stop receiving these reminders for this will, visit: ${unsubscribeUrl}\n\nSoroWill`;
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
