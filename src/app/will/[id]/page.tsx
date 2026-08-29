@@ -72,6 +72,7 @@ export default function WillDetailPage() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [castingVoteId, setCastingVoteId] = useState<string | null>(null);
+  const [hasVoted, setHasVoted] = useState(false);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [exportingCertificate, setExportingCertificate] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<Date>(new Date());
@@ -186,6 +187,7 @@ export default function WillDetailPage() {
     name: string,
     fn: () => Promise<{ txHash: string }>,
     errorMessage?: (err: unknown) => string,
+    onSuccess?: () => void,
   ) {
     setBusyAction(name);
     setError(null);
@@ -195,6 +197,7 @@ export default function WillDetailPage() {
       await refetch();
       const actionLabel = name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       toast.success(`${actionLabel} successful`);
+      onSuccess?.();
     } catch (err) {
       const message = errorMessage ? errorMessage(err) : formatError(err);
       setError(message);
@@ -282,6 +285,7 @@ export default function WillDetailPage() {
 
   const isOwner = publicKey === will.owner;
   const isGuardian = !!publicKey && will.guardians.includes(publicKey);
+  const guardianHasVoted = isGuardian && (hasVoted || hasGuardianVoted(will.id, publicKey as string));
   const isBeneficiary = !!publicKey && will.beneficiaries.some((b) => b.address === publicKey);
   const role = isOwner ? 'Owner' : isGuardian ? 'Guardian' : isBeneficiary ? 'Beneficiary' : 'Viewing as guest';
   const client = getSoroWillClient();
@@ -660,11 +664,20 @@ export default function WillDetailPage() {
           isGuardian={isGuardian}
           isActive={will.status === WillStatus.Active}
           isCastingVote={castingVoteId === will.id}
+          hasVoted={guardianHasVoted}
           onCastVote={() => {
             setCastingVoteId(will.id);
-            void runAction('cast_guardian_vote', () => client.guardianTrigger(will.id), getGuardianVoteErrorMessage).finally(
-              () => setCastingVoteId(null),
-            );
+            void runAction(
+              'cast_guardian_vote',
+              () => client.guardianTrigger(will.id),
+              getGuardianVoteErrorMessage,
+              () => {
+                if (publicKey) {
+                  markGuardianVoted(will.id, publicKey);
+                  setHasVoted(true);
+                }
+              },
+            ).finally(() => setCastingVoteId(null));
           }}
           error={error}
         />
