@@ -9,6 +9,7 @@ import { WillStatus, type Will, formatUSDC, toStroops } from '@sorowill/sdk';
 import { safeGetPublicKey } from '@/lib/freighter';
 import { getSoroWillClient, getWillsByGuardian } from '@/lib/sorowill';
 import { formatError } from '@/lib/errors';
+import { exportWillsToCSV } from '@/lib/willExport';
 import { useToast } from '@/components/Toast';
 import { WillCard } from '@/components/WillCard';
 
@@ -78,6 +79,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [guardianScanWarning, setGuardianScanWarning] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -114,7 +116,8 @@ export default function DashboardPage() {
       }
       setOwnedWills(owned);
       setInheritingWills(inheriting);
-      setGuardianWills(guardian);
+      setGuardianWills(guardian.wills);
+      setGuardianScanWarning(guardian.hasErrors);
       setLastFetchTime(new Date());
     } catch (err) {
       if (!isMounted.current) {
@@ -146,7 +149,8 @@ export default function DashboardPage() {
       ]);
       setOwnedWills(owned);
       setInheritingWills(inheriting);
-      setGuardianWills(guardian);
+      setGuardianWills(guardian.wills);
+      setGuardianScanWarning(guardian.hasErrors);
       setLastFetchTime(new Date());
       setError(null);
       toast.success('Data refreshed');
@@ -158,6 +162,17 @@ export default function DashboardPage() {
       setIsRefreshing(false);
     }
   }, [publicKey, toast]);
+
+  const handleExportCSV = useCallback(() => {
+    const csv = exportWillsToCSV(ownedWills);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sorowill-wills-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [ownedWills]);
 
   useEffect(() => {
     void safeGetPublicKey().then((key) => {
@@ -310,6 +325,13 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {guardianScanWarning && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-300 text-sm">
+          ⚠️ Some guardianship data could not be loaded due to a network error. Your guardian list above may be
+          incomplete — try refreshing.
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <h1 className="text-2xl font-bold text-will-light">Dashboard</h1>
@@ -330,6 +352,15 @@ export default function DashboardPage() {
               }`}
             >
               {isMultiSelectMode ? 'Cancel Multi-select' : 'Multi-select Mode'}
+            </button>
+          )}
+          {tab === 'owned' && ownedWills.length > 0 && (
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="rounded-full border border-white/20 px-4 py-2 text-sm text-will-light/80 transition hover:border-white/40 hover:text-will-light"
+            >
+              Export CSV
             </button>
           )}
           <button

@@ -14,7 +14,7 @@ import { notFound } from 'next/navigation';
 
 import { formatDeadline, WillStatus } from '@sorowill/sdk';
 import { getContractId, getSoroWillClient, stellarExpertUrl } from '@/lib/sorowill';
-import { isWillNotFoundError } from '@/lib/errors';
+import { nextCheckinDeadline } from '@/lib/deadlines';
 import { StatusBanner } from '@/components/StatusBanner';
 import { ShareVerification } from '@/components/ShareVerification';
 import { CopyAddress } from '@/components/CopyAddress';
@@ -49,7 +49,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ id: str
     throw error;
   }
 
-  const nextDeadline = new Date(will.lastCheckin.getTime() + will.checkinPeriodDays * 86_400 * 1000);
+  const nextDeadline = nextCheckinDeadline(will);
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
